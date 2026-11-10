@@ -175,23 +175,28 @@
       igual(m.estado.pontos, [0, 0]);
       igual(m.cartasRestantes(), 19);
     });
-    teste("Aceitou: alternativas ocultas (só as 4 letras, sorteadas de novo) e 10 s", function () {
+    teste("Aceitou: alternativas ocultas (as 4 letras, na mesma ordem que a turma viu) e 10 s", function () {
       var m = partida(2); abrir(m, null);
+      var antes = m.estado.jogada.ordem.join("");
       m.passar(); m.abrirPasse(); m.aceitarPasse();
       var j = m.estado.jogada;
       igual(j.aberta, true);
       igual(j.tempoTotal, 10);
-      igual(j.ordemOculta.slice().sort(), [0, 1, 2, 3]);
+      igual(j.ordemOculta.join(""), antes);
     });
-    teste("Letras ocultas mudam de posição em relação às alternativas vistas", function () {
-      var mudou = false;
-      for (var s = 1; s <= 10 && !mudou; s++) {
+    teste("Letras ocultas nunca mudam de posição (Em Dobro, Às cegas e passe)", function () {
+      for (var s = 1; s <= 10; s++) {
         var m = R.novaPartida({ rodadas: 1, equipes: [{ nome: "A" }, { nome: "B" }] }, banco, semente(s));
         abrir(m, "dobro"); var antes = m.estado.jogada.ordem.join("");
         m.esconderAlternativas();
-        if (m.estado.jogada.ordemOculta.join("") !== antes) mudou = true;
+        igual(m.estado.jogada.ordemOculta.join(""), antes);
       }
-      verdade(mudou, "as letras nunca foram sorteadas de novo");
+    });
+    teste("Errou e foi para o passe: a letra certa continua a mesma para a equipe do passe", function () {
+      var m = partida(2); abrir(m, null, 200);
+      var j0 = m.estado.jogada, posCerta = j0.ordem.indexOf(certa(m));
+      m.responder(errada(m)); m.abrirPasse(); m.aceitarPasse();
+      igual(m.estado.jogada.ordemOculta.indexOf(certa(m)), posCerta);
     });
     teste("Escolher a letra oculta julga sozinho e marca a resposta como oculta", function () {
       var m = partida(2); abrir(m, "dobro", 200);
@@ -201,14 +206,14 @@
       igual(m.estado.jogada.oculta, true);
       igual(m.estado.jogada.resultado.vaiParaPasse, true);
     });
-    teste("Alternativa cortada pela Tesoura não volta como letra oculta", function () {
+    teste("Alternativa cortada pela Tesoura fica cortada, na mesma letra, e não pode ser escolhida", function () {
       var m = partida(2); m.estado.tesoura[0] = true; abrir(m, "dobro");
       m.dep.forcar("tesoura", 2); m.usarTesoura();
       var cortadas = m.estado.jogada.eliminadas.slice();
+      var antes = m.estado.jogada.ordem.join("");
       m.esconderAlternativas();
-      igual(m.estado.jogada.ordemOculta.length, 2);
-      cortadas.forEach(function (c) { verdade(m.estado.jogada.ordemOculta.indexOf(c) < 0, "voltou " + c); });
-      igual(m.responder(cortadas[0]), null);
+      igual(m.estado.jogada.ordemOculta.join(""), antes);
+      cortadas.forEach(function (c) { igual(m.responder(c), null); });
     });
     teste("Às cegas: alternativas só por 5 s; depois a equipe escolhe uma das 4 letras ocultas", function () {
       var m = partida(2); m.estado.asCegas[0] = true; var j = abrir(m, null, 100);
@@ -672,7 +677,7 @@
         else if (f === "pergunta") {
           if (j.etapa === "morte" && morte.indexOf(j.q) < 0) morte.push(j.q);
           var x = rng(), certa = m.questao(j.q).correta;
-          var lista = j.aberta ? j.ordemOculta : [0, 1, 2, 3].filter(function (k) { return j.eliminadas.indexOf(k) < 0; });
+          var lista = (j.aberta ? j.ordemOculta : [0, 1, 2, 3]).filter(function (k) { return j.eliminadas.indexOf(k) < 0; });
           var errada = lista.filter(function (k) { return k !== certa; })[0];
           if (x < 0.12) m.tempoEsgotado();
           else if (x < 0.25 && !m.passarBloqueado()) m.passar();

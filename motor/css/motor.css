@@ -367,7 +367,9 @@ body[data-modo="claro"] .campea { text-shadow: none; }
   transition: transform .1s, box-shadow .1s; animation: carta-entra .45s cubic-bezier(.2, 1.4, .4, 1) both;
 }
 .letra-oculta:nth-child(2) { animation-delay: .08s; } .letra-oculta:nth-child(3) { animation-delay: .16s; } .letra-oculta:nth-child(4) { animation-delay: .24s; }
-.letra-oculta:hover { transform: translateY(-.25rem); box-shadow: 0 .3rem 0 var(--acento-escuro), 0 0 1.4rem rgba(255, 255, 255, .6); }
+.letra-oculta.cortada { opacity: .35; cursor: not-allowed; filter: grayscale(1); }
+.letra-oculta.cortada:hover { transform: none; box-shadow: none; }
+.letra-oculta:not(.cortada):hover { transform: translateY(-.25rem); box-shadow: 0 .3rem 0 var(--acento-escuro), 0 0 1.4rem rgba(255, 255, 255, .6); }
 .letra-oculta .letra { width: 2.4em; height: 2.4em; font-size: clamp(1rem, 3vmin, 1.6rem); }
 .oculta-verso { font-family: var(--fonte-titulo); font-size: clamp(2rem, 7vmin, 4rem); line-height: 1; opacity: .55; }
 

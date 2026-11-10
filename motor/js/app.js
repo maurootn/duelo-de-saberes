@@ -1366,17 +1366,19 @@
     return "parado";
   }
 
-  /* alternativas ocultas: só as letras, numa ordem nova; o conteúdo aparece depois da escolha */
+  /* alternativas ocultas: só as letras, na mesma ordem em que apareceram; o conteúdo aparece depois da escolha */
   function letrasOcultas(j) {
     var letras = ["A", "B", "C", "D"];
-    var motivo = j.etapa === "passe" ? "Passe: as alternativas foram escondidas e trocaram de letra." :
-      j.cegas ? "Às cegas: os 5 s acabaram, as alternativas sumiram e trocaram de letra." :
-      j.sumiram ? "Em Dobro: as alternativas sumiram e trocaram de letra." : "As alternativas estão escondidas.";
+    var motivo = j.etapa === "passe" ? "Passe: as alternativas foram escondidas, cada uma na mesma letra de antes." :
+      j.cegas ? "Às cegas: os 5 s acabaram e as alternativas sumiram, cada uma na mesma letra de antes." :
+      j.sumiram ? "Em Dobro: as alternativas sumiram, cada uma na mesma letra de antes." : "As alternativas estão escondidas.";
     return '<div class="ocultas">' +
       '<p class="ocultas-titulo">Alternativas ocultas</p>' +
       '<p class="ocultas-motivo">' + esc(motivo) + ' Escolham uma letra: o conteúdo aparece depois.</p>' +
       '<div class="letras-ocultas">' + j.ordemOculta.map(function (orig, pos) {
-        return '<button class="letra-oculta" data-acao="responder" data-orig="' + orig + '"' + (pos === 0 ? " data-foco" : "") + ' aria-label="Letra ' + letras[pos] + '">' +
+        if (j.eliminadas.indexOf(orig) >= 0) return '<button class="letra-oculta cortada" disabled aria-label="Letra ' + letras[pos] + ', cortada pela Tesoura">' +
+          '<span class="letra">' + letras[pos] + '</span><span class="oculta-verso" aria-hidden="true">✕</span></button>';
+        return '<button class="letra-oculta" data-acao="responder" data-orig="' + orig + '"' + (pos === j.ordemOculta.findIndex(function (o) { return j.eliminadas.indexOf(o) < 0; }) ? " data-foco" : "") + ' aria-label="Letra ' + letras[pos] + '">' +
           '<span class="letra">' + letras[pos] + '</span><span class="oculta-verso" aria-hidden="true">?</span></button>';
       }).join("") + '</div>' +
     '</div>';

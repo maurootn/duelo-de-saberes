@@ -338,18 +338,18 @@
       if (!j || j.aberta || E().fase !== "pergunta") return;
       j.aberta = true;
       j.sumiram = true;
-      /* as letras são sorteadas de novo: vale lembrar o conteúdo, não a posição */
-      j.ordemOculta = embaralhar([0, 1, 2, 3].filter(function (k) { return j.eliminadas.indexOf(k) < 0; }), m.rng);
+      /* as letras ficam onde estavam: a alternativa que era B continua sendo B (as cortadas pela Tesoura seguem cortadas) */
+      j.ordemOculta = j.ordem.slice();
     };
 
     /* ---------- respostas ---------- */
     /* indice = posição original (0–3) da alternativa na questão.
-       Com alternativas ocultas, a equipe escolhe uma das letras sorteadas e o conteúdo é revelado depois. */
+       Com alternativas ocultas, a equipe escolhe uma das letras (na mesma posição de antes) e o conteúdo é revelado depois. */
     m.responder = function (indice) {
       var e = E(), j = e.jogada;
       if (!j || e.fase !== "pergunta") return null;
-      if (j.aberta) { if (!j.ordemOculta || j.ordemOculta.indexOf(indice) < 0) return null; }
-      else if (j.eliminadas.indexOf(indice) >= 0) return null;
+      if (j.aberta && (!j.ordemOculta || j.ordemOculta.indexOf(indice) < 0)) return null;
+      if (j.eliminadas.indexOf(indice) >= 0) return null;
       guardar();
       j.oculta = !!j.aberta;
       return julgar(indice === q(j.q).correta, indice);
@@ -498,7 +498,8 @@
       j.etapa = "passe";
       j.aberta = true;
       j.eliminadas = [];
-      j.ordemOculta = embaralhar([0, 1, 2, 3], m.rng);
+      /* no passe as letras continuam na mesma ordem que a turma viu: nada se embaralha */
+      j.ordemOculta = j.ordem.slice();
       j.oculta = false;
       j.escolhida = null;
       j.tempoTotal = TEMPO_PASSE + extraEquipe(j.passe.equipe);
