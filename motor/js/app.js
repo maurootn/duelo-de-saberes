@@ -1,12 +1,12 @@
-/* Duelo de Saberes 2.0 · Interface do motor de regras (Fase 4)
+/* Duelo de Saberes 2.0 · Interface do motor de regras (Fase 4) com temas visuais e sons (Fase 5)
    As regras ficam em regras.js; aqui só se desenha e se chama o motor.
    Telas: inicio → config → (fase do motor: tabuleiro, pergunta, resultado, passe, roleta,
-   fim-rodada, morte-intro, morte-leva, fim). Visual base da Fase 3; arte final por disciplina na Fase 5. */
+   fim-rodada, morte-intro, morte-leva, fim). Visual base da Fase 3. Cada tema fica em js/tema-<disciplina>.js e css/tema-<disciplina>.css; os sons, em js/sons.js. */
 
 (function () {
   "use strict";
 
-  var D = window.DADOS, LOGO = window.LOGO, R = window.REGRAS;
+  var D = window.DADOS, LOGO = window.LOGO, R = window.REGRAS, SONS = window.SONS, TEMAS = window.TEMAS || {};
   var app = document.getElementById("app");
   var painel = document.getElementById("painel-visual");
   var CHAVE = "duelo-motor-v1";
@@ -14,12 +14,12 @@
   var REDUZIR = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   /* ---------- estado da tela ---------- */
-  var visual = { tema: "palco", modo: "escuro" };
+  var visual = { tema: "palco", modo: "escuro", fonte: "a", som: "sim" };
   var config = {
     modoJogo: "sala", disciplina: "biologia", nivel: "calouro", temaArena: D.temasArena[0],
     rodadas: 2, nEquipes: 4,
     equipes: D.equipesPadrao.map(function (e) { return { nome: e.nome, cor: e.cor, forma: e.forma }; }),
-    tempoExtraLeitura: 0, depuracao: true,
+    tempoExtraLeitura: 0, depuracao: true, temaVisual: "disciplina",
     chancesTesoura: R.FATIAS_TESOURA.map(function (f) { return f.chance; }),
     chancesPunicao: chancesPadraoPunicao()
   };
@@ -111,7 +111,31 @@
     var emJogo = t !== "inicio" && t !== "config";
     b.dataset.tema = emJogo ? visual.tema : "palco";
     b.dataset.modo = visual.modo;
+    b.dataset.fonte = visual.fonte;
     b.dataset.tela = t;
+    SONS.definirTema(b.dataset.tema);
+    SONS.ligar(visual.som === "sim");
+  }
+  /* tema em uso na tela (objeto de js/tema-*.js) ou null no Palco */
+  function temaObj() { return TEMAS[document.body.dataset.tema] || null; }
+  /* tema com que a partida começa: o da disciplina, se ela já tiver um, ou o Palco */
+  function temaDaPartida() {
+    return (config.temaVisual !== "palco" && config.modoJogo === "sala" && TEMAS[config.disciplina]) ? config.disciplina : "palco";
+  }
+  function som(nome, op) { SONS.tocar(nome, op); }
+  var ICONE_SOM = {
+    sim: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9Z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    nao: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9Z" fill="currentColor"/><path d="m16.5 9.5 5 5m0-5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+  };
+  function botaoSom() {
+    var on = visual.som === "sim";
+    return '<button class="botao botao-contorno botao-pequeno botao-som" data-acao="som" aria-pressed="' + on + '" title="' + (on ? "Desligar os sons (M)" : "Ligar os sons (M)") + '" aria-label="' + (on ? "Sons ligados" : "Sons desligados") + '">' + ICONE_SOM[on ? "sim" : "nao"] + '</button>';
+  }
+  function trocarBotaoSom() { var b = app.querySelector(".botao-som"); if (b) b.outerHTML = botaoSom(); }
+  function alternarSom() {
+    visual.som = visual.som === "sim" ? "nao" : "sim";
+    salvar(); aplicarVisual(telaAtual()); desenharPainel(); trocarBotaoSom();
+    if (visual.som === "sim") som("foco");
   }
 
   /* ================= desenho ================= */
@@ -152,6 +176,8 @@
   }
 
   function cenario() {
+    var t = temaObj();
+    if (t && t.fundo) return t.fundo();
     return '<div class="cenario" aria-hidden="true"><div class="holofotes"><i></i><i></i><i></i><i></i></div><div class="sanefa"></div><div class="cortina esq"></div><div class="cortina dir"></div><div class="piso"></div><div class="ribalta"></div></div>';
   }
 
@@ -168,7 +194,7 @@
           '<a class="botao botao-contorno" href="testes.html">Lista de testes</a>' +
         '</div>' +
       '</div>' +
-      '<footer class="inicio-rodape">Fase 4 · motor de regras com 20 questões de teste · Prof. Mauro Vinícius, Tanque Novo-BA</footer>' +
+      '<footer class="inicio-rodape">Fase 5 · tema de Biologia e sons · 20 questões de teste · Prof. Mauro Vinícius, Tanque Novo-BA</footer>' +
     '</main>';
   }
 
@@ -233,6 +259,24 @@
       '</section>' +
 
       '<section class="bloco bloco-largo">' +
+        '<h2>Visual e som</h2>' +
+        '<div class="regras-grade regras-grade-4">' +
+          '<div><h3 class="mini-titulo">Tema da partida</h3>' +
+            '<div class="chips" role="radiogroup" aria-label="Tema da partida">' + chip("temaVisual", "disciplina", "Tema da disciplina") + chip("temaVisual", "palco", "Palco") + '</div>' +
+            '<p class="nota">' + (temaDaPartida() === "palco" ? (config.temaVisual === "palco" ? "A partida usa o Palco." : "Esta escolha ainda não tem tema próprio: a partida usa o Palco.") : "A partida usa o tema de " + esc(achar(D.disciplinas, config.disciplina).nome) + ".") + ' Por enquanto, só Biologia tem tema.</p></div>' +
+          '<div><h3 class="mini-titulo">Versão</h3>' +
+            '<div class="chips" role="radiogroup" aria-label="Versão clara ou escura">' + chipVisual("modo", "escuro", "Escuro") + chipVisual("modo", "claro", "Sala clara") + '</div>' +
+            '<p class="nota">Escuro para sala com pouca luz; Sala clara para projetor em sala iluminada.</p></div>' +
+          '<div><h3 class="mini-titulo">Sons</h3>' +
+            '<div class="chips" role="radiogroup" aria-label="Sons">' + chipVisual("som", "sim", "Ligados") + chipVisual("som", "nao", "Desligados") + '</div>' +
+            '<p class="nota">No jogo, a tecla M ou o botão do alto-falante liga e desliga.</p></div>' +
+          '<div><h3 class="mini-titulo">Títulos de Biologia</h3>' +
+            '<div class="chips" role="radiogroup" aria-label="Fonte dos títulos no tema de Biologia">' + chipVisual("fonte", "a", "A · Lilita One") + chipVisual("fonte", "b", "B · Fredoka") + '</div>' +
+            '<p class="nota">Vale só no tema de Biologia. Os textos continuam em Atkinson.</p></div>' +
+        '</div>' +
+      '</section>' +
+
+      '<section class="bloco bloco-largo">' +
         '<h2>Regras e testes</h2>' +
         '<div class="regras-grade">' +
           '<div><h3 class="mini-titulo">Tempo extra de leitura</h3>' +
@@ -281,6 +325,10 @@
     var on = config[campo] === valor;
     return '<button class="chip' + (on ? " ativa" : "") + '" role="radio" aria-checked="' + on + '" data-acao="escolher" data-campo="' + campo + '" data-valor="' + esc(valor) + '">' + esc(titulo) + '</button>';
   }
+  function chipVisual(campo, valor, titulo) {
+    var on = visual[campo] === valor;
+    return '<button class="chip' + (on ? " ativa" : "") + '" role="radio" aria-checked="' + on + '" data-acao="visual" data-campo="' + campo + '" data-valor="' + valor + '">' + titulo + '</button>';
+  }
   function chipNum(campo, valor, titulo) {
     var on = config[campo] === valor;
     return '<button class="chip' + (on ? " ativa" : "") + '" role="radio" aria-checked="' + on + '" data-acao="escolher-num" data-campo="' + campo + '" data-valor="' + valor + '">' + esc(titulo) + '</button>';
@@ -312,7 +360,7 @@
   /* ---------- começo da partida ---------- */
   function comecarPartida() {
     if (!banco) return;
-    visual.tema = (config.modoJogo === "sala" && config.disciplina === "biologia") ? "biologia" : "palco";
+    visual.tema = temaDaPartida();
     motor = R.novaPartida({
       rodadas: config.rodadas, nivel: config.modoJogo === "sala" ? config.nivel : "calouro",
       equipes: equipesConfig(), tempoExtraLeitura: config.tempoExtraLeitura,
@@ -339,7 +387,7 @@
     return '<header class="barra barra-jogo">' +
       LOGO.completo("logo-barra") +
       '<div class="barra-info"><strong>Rodada ' + e.rodada + ' de ' + e.rodadas + '</strong><span>' + esc(nomeTema()) + '</span></div>' +
-      '<div class="barra-acoes">' + (extra || "") + botaoDesfazer() + '</div>' +
+      '<div class="barra-acoes">' + (extra || "") + botaoDesfazer() + botaoSom() + '</div>' +
     '</header>';
   }
 
@@ -350,7 +398,7 @@
     if (e.tesoura[e.vez]) dicas.push(ICONE.tesoura + ' Vocês têm uma Tesoura: dá para usar na pergunta, antes de responder.');
     if (e.asCegas[e.vez]) dicas.push(ICONE.olho + ' Às cegas: na próxima pergunta, as alternativas aparecem só por 5 s.');
     if (e.contraRelogio[e.vez]) dicas.push(ICONE.relogio + ' Contra o relógio: a próxima pergunta tem só 10 s.');
-    return '<main class="tela tabuleiro">' +
+    return '<main class="tela tabuleiro">' + fundoTema() +
       barraJogo(
         '<button class="botao botao-contorno botao-pequeno" data-acao="sortear"' + (restam && ui.revelando === null ? "" : " disabled") + '>Sortear carta</button>' +
         '<button class="botao botao-contorno botao-pequeno" data-acao="encerrar">Encerrar</button>') +
@@ -363,6 +411,8 @@
       placarLateral() +
     '</main>';
   }
+  /* fundo próprio do tema no tabuleiro e na pergunta (o Palco usa só o degradê do CSS) */
+  function fundoTema() { var t = temaObj(); return t && t.fundo ? t.fundo() : ""; }
   function cartaHtml(c, i) {
     var dep = config.depuracao && ui.verCartas;
     if (c.usada) {
@@ -372,7 +422,7 @@
     }
     var virando = ui.revelando === i;
     var esp = c.especial ? INFO_ESPECIAL[c.especial] : null;
-    return '<button class="carta' + (virando ? " virando" : "") + '" data-acao="carta" data-indice="' + i + '" aria-label="Carta ' + c.n + '"' + (i === primeiraLivre() && ui.revelando === null ? " data-foco" : "") + (ui.revelando !== null ? " tabindex=\"-1\"" : "") + '>' +
+    return '<button class="carta' + (virando ? " virando revelada" : "") + '" data-acao="carta" data-indice="' + i + '" aria-label="Carta ' + c.n + '"' + (i === primeiraLivre() && ui.revelando === null ? " data-foco" : "") + (ui.revelando !== null ? " tabindex=\"-1\"" : "") + '>' +
       '<span class="carta-giro"><span class="carta-verso"><span class="carta-numero">' + c.n + '</span>' +
         (dep ? '<span class="carta-espia">' + c.valor + (esp ? ' · ' + esp.titulo.replace("!", "") : '') + '</span>' : '') +
       '</span>' +
@@ -454,7 +504,12 @@
     if (ui.sorteando && arguments.length < 2) return;
     ui.revelando = i;
     var el = app.querySelector('.carta[data-indice="' + i + '"]');
-    if (el) { el.classList.add("virando"); app.querySelector(".cartas").classList.add("escolhida"); }
+    var t = temaObj(), animada = !!(t && t.revelar && el && !REDUZIR.matches);
+    if (el) {
+      if (animada) t.revelar(el, app.querySelector(".cartas"), false);
+      el.classList.add("virando"); app.querySelector(".cartas").classList.add("escolhida");
+    }
+    som("revelar", { curto: !animada });
     setTimeout(function () {
       if (ui.revelando !== i) return;
       if (c.especial) {
@@ -462,7 +517,7 @@
         desenhar();
         timerEspecial = setTimeout(fecharEspecial, espera(4200));
       } else concluirAbertura(i);
-    }, espera(1300));
+    }, espera(animada ? t.revelacaoMs : 1300));
   }
   function fecharEspecial() {
     clearTimeout(timerEspecial);
@@ -528,7 +583,7 @@
     if (j.relogio && j.etapa === "principal") selo += '<span class="selo-especial s-efeito">' + ICONE.relogio + 'Contra o relógio</span>';
 
     var revelando = r && j.oculta, n = 0;
-    var h = '<main class="tela pergunta' + (r ? " respondida" : "") + (revelando ? " revelando" : "") + (esp ? " com-" + j.especial : "") + '" style="--cor-equipe:' + corHex(eq.cor) + '">' +
+    var h = '<main class="tela pergunta' + (r ? " respondida" : "") + (revelando ? " revelando" : "") + (esp ? " com-" + j.especial : "") + '" style="--cor-equipe:' + corHex(eq.cor) + '">' + fundoTema() +
       '<header class="barra barra-jogo">' +
         '<p class="vez vez-barra">' + ficha(eq) + '<span><strong>' + esc(eq.nome) + '</strong> responde</span></p>' +
         '<div class="selos">' + selo + '</div>' +
@@ -663,12 +718,15 @@
       if (!motor || E().fase !== "pergunta") return pararRelogio();
       var j = E().jogada;
       if (j.pausado || ui.giro || ui.especial) return;
+      var antes = Math.ceil(j.restante);
       j.restante = Math.max(0, j.restante - dt);
+      var seg = Math.ceil(j.restante);
+      if (seg !== antes && seg > 0 && seg <= 5) som("tique");
       if (j.somemEm && !j.aberta && (j.tempoTotal - j.restante) >= j.somemEm && j.restante > 0) {
         motor.esconderAlternativas(); salvar(); desenhar(); return;
       }
       atualizarCronometro();
-      if (j.restante <= 0) { motor.tempoEsgotado(); salvar(); desenhar(); }
+      if (j.restante <= 0) { motor.tempoEsgotado(); som("tempo"); salvar(); desenhar(); }
     }, 100);
   }
   function pararRelogio() { if (relogio) { clearInterval(relogio); relogio = null; } }
@@ -724,6 +782,7 @@
 
   function iniciarGiro() {
     var g = ui.giro; g.iniciado = true;
+    if (g.microscopio) { sortearNoMicroscopio(g); return; }
     var giro = app.querySelector(".roda-giro"), fatias = g.fatias, f = fatias[g.indice];
     var largura = f.a1 - f.a0, centro = f.a0 + largura / 2 + (Math.random() - .5) * largura * .55;
     var final = 360 * (REDUZIR.matches ? 1 : 6) + (360 - centro);
@@ -750,6 +809,7 @@
       }
       var res = app.querySelector(".giro-resultado");
       if (res) { res.hidden = false; var b = res.querySelector("button"); if (b) b.focus(); }
+      som("escolhida");
       if (g.aoParar) g.aoParar();
     }, dur + 150);
   }
@@ -791,7 +851,16 @@
         '<p class="passe-sub">Carta de ' + j.valor + ' · no passe vale <b>' + (j.valor * 1.5) + '</b> · sem alternativas · 10 s</p>' +
       '</header>' +
       '<div class="passe-centro">';
-    if (mostrarRoda) {
+    var t = temaObj();
+    if (t && t.microscopio) {
+      /* tema com tela própria de passe: as equipes que podem receber aparecem no campo de visão */
+      var lista = mostrarRoda ? p.elegiveis : (p.equipe !== null ? [p.equipe] : []);
+      var foco = escolhido ? lista.indexOf(p.equipe) : -1;
+      if (lista.length) h += t.microscopio(lista.map(function (i) { var q = eqp(i); return { nome: esc(q.nome), cor: corHex(q.cor), ficha: ficha(q) }; }),
+        foco >= 0 ? foco : null, escolhido ? "pequeno" : "", "Passe<br>" + j.valor);
+      if (mostrarRoda && !p.sorteado) h += '<button class="botao botao-principal botao-enorme" data-acao="sortear-passe" data-foco>Sortear quem recebe</button>';
+      if (!mostrarRoda) h += '<p class="passe-direto">' + (e.equipes.length === 2 ? "Com duas equipes, a outra recebe direto." : "Só uma equipe pode receber agora.") + '</p>';
+    } else if (mostrarRoda) {
       var gp = ui.giro && ui.giro.tipo === "passe" ? ui.giro : null;
       h += gp ? rodaParada(gp.fatias, gp, escolhido ? "roda-pequena" : "") : rodaSvg(fatiasPasse(p.elegiveis));
       if (!p.sorteado) h += '<button class="botao botao-principal botao-enorme" data-acao="sortear-passe" data-foco>Sortear quem recebe</button>';
@@ -816,9 +885,21 @@
     var j = E().jogada, eq = motor.sortearPasse();
     if (eq === null) return;
     salvar();
-    ui.giro = { tipo: "passe", fatias: fatiasPasse(j.passe.elegiveis), indice: j.passe.elegiveis.indexOf(eq),
+    var t = temaObj();
+    ui.giro = { tipo: "passe", microscopio: !!(t && t.sortear), fatias: fatiasPasse(j.passe.elegiveis), indice: j.passe.elegiveis.indexOf(eq),
       aoParar: function () { setTimeout(function () { if (ui.giro && ui.giro.tipo === "passe") desenhar(); }, espera(700)); } };
     desenhar();
+  }
+
+  /* sorteio do passe nos temas com tela própria: o foco pula de equipe em equipe até travar na sorteada */
+  function sortearNoMicroscopio(g) {
+    temaObj().sortear(app, g.indice, {
+      reduzir: REDUZIR.matches,
+      vivo: function () { return ui.giro === g; },
+      aoPasso: function () { som("foco"); },
+      aoTravar: function () { som("escolhida"); },
+      aoFim: function () { g.parado = true; desenhar(); }
+    });
   }
 
   /* ---------- roleta de punição ---------- */
@@ -1138,8 +1219,14 @@
         return '<button class="pv-opcao' + (on ? " ativa" : "") + '" aria-pressed="' + on + '" data-acao="visual" data-campo="' + campo + '" data-valor="' + it[0] + '">' + it[1] + '</button>';
       }).join("") + '</div></fieldset>';
     }
-    var corpo = grupo("Tema", "tema", [["palco", "Palco"], ["biologia", "Biologia (prévia)"]]) +
-      grupo("Modo", "modo", [["escuro", "Escuro"], ["claro", "Sala clara"]]);
+    var corpo = grupo("Tema", "tema", [["palco", "Palco"], ["biologia", "Biologia"]]) +
+      grupo("Modo", "modo", [["escuro", "Escuro"], ["claro", "Sala clara"]]) +
+      (visual.tema === "biologia" ? grupo("Fonte dos títulos (Biologia)", "fonte", [["a", "A · Lilita One"], ["b", "B · Fredoka"]]) : "") +
+      grupo("Sons", "som", [["sim", "Ligados"], ["nao", "Desligados"]]) +
+      '<fieldset class="pv-grupo"><legend>Ouvir os sons do tema</legend><div class="pv-opcoes pv-linha">' +
+        [["revelar", "Revelar"], ["acertar", "Acertar"], ["errar", "Errar"], ["tique", "Últimos 5 s"], ["tempo", "Tempo esgotado"], ["passe", "Passe"], ["foco", "Sorteio"], ["escolhida", "Sorteada"]]
+          .map(function (s) { return '<button class="pv-opcao" data-acao="ouvir" data-valor="' + s[0] + '">' + s[1] + '</button>'; }).join("") +
+      '</div></fieldset>';
     if (dep) corpo += painelDepuracao();
     painel.innerHTML =
       '<button class="pv-botao' + (dep ? " pv-dep" : "") + '" data-acao="painel" aria-expanded="' + ui.painelAberto + '" aria-controls="pv-caixa">' +
@@ -1217,7 +1304,7 @@
         motor = R.retomar(salvo, banco || []); salvo = null; tela = "jogo"; limparUi();
         if (E().jogada) E().jogada.pausado = true;
         if (E().fase === "roleta" && E().jogada.punicao) E().fase = "resultado";
-        visual.tema = (config.modoJogo === "sala" && config.disciplina === "biologia") ? "biologia" : "palco";
+        visual.tema = temaDaPartida();
         desenhar(); break;
       case "comecar": case "jogar-de-novo": comecarPartida(); break;
       case "escolher": config[b.dataset.campo] = v; salvar(); desenhar(); break;
@@ -1241,7 +1328,7 @@
       case "fechar-especial": fecharEspecial(); break;
       case "placar-toggle": ui.placarAberto = !ui.placarAberto; b.closest(".placar").classList.toggle("aberto", ui.placarAberto); b.setAttribute("aria-expanded", ui.placarAberto); break;
 
-      case "responder": motor.responder(Number(b.dataset.orig)); depois(); break;
+      case "responder": if (motor.responder(Number(b.dataset.orig)) !== null) somDaResposta(); depois(); break;
       case "ir-roleta": ui.revelacaoVista = true; desenhar(); break;
       case "passar": motor.passar(); depois(); break;
       case "pausar": pausar(); break;
@@ -1250,7 +1337,7 @@
       case "concluir": motor.concluirJogada(); ui.revelacaoVista = false; depois(); break;
       case "desfazer": desfazer(); break;
 
-      case "abrir-passe": motor.abrirPasse(); depois(); break;
+      case "abrir-passe": motor.abrirPasse(); som("passe"); depois(); break;
       case "sortear-passe": sortearPasse(); break;
       case "aceitar-passe": ui.giro = null; ui.revelacaoVista = false; motor.aceitarPasse(); depois(); break;
       case "recusar-passe": ui.giro = null; motor.recusarPasse(); depois(); break;
@@ -1261,7 +1348,15 @@
       case "proxima-morte": motor.proximaMorte(); depois(); break;
 
       case "painel": ui.painelAberto = !ui.painelAberto; desenharPainel(); break;
-      case "visual": visual[b.dataset.campo] = v; salvar(); aplicarVisual(telaAtual()); desenharPainel(); break;
+      case "visual":
+        visual[b.dataset.campo] = v; salvar();
+        /* trocar o tema muda o desenho da tela; modo, fonte e som só trocam variáveis */
+        if ((b.dataset.campo === "tema" || tela === "config") && !ui.sorteando && ui.revelando === null && !ui.giro) desenhar();
+        else { aplicarVisual(telaAtual()); desenharPainel(); trocarBotaoSom(); }
+        if (b.dataset.campo === "som" && v === "sim") som("foco");
+        break;
+      case "som": alternarSom(); break;
+      case "ouvir": SONS.ligar(true); som(v); SONS.ligar(visual.som === "sim"); break;
 
       /* depuração */
       case "dep-pontos": motor.dep.somarPontos(Number(b.dataset.equipe), Number(v)); depoisDep(); break;
@@ -1275,6 +1370,12 @@
     }
   });
   function depoisDep() { salvar(); desenhar(); }
+  /* som do acerto ou do erro, logo depois de o motor julgar a resposta */
+  function somDaResposta() {
+    var e = E(), r = e.jogada && e.jogada.resultado;
+    if (e.fase === "roleta" || (r && r.tipo === "erro")) som("errar");
+    else if (r && r.tipo === "acerto") som("acertar");
+  }
 
   function desfazer() {
     if (!motor || !motor.podeDesfazer()) return;
@@ -1322,6 +1423,7 @@
     if (ev.target.matches("input, textarea, select")) return;
     if (ev.key === "Escape" && ui.painelAberto) { ui.painelAberto = false; desenharPainel(); return; }
     if (!motor || tela !== "jogo") return;
+    if (ev.key.toLowerCase() === "m" && !ev.ctrlKey && !ev.metaKey && !ev.altKey) { alternarSom(); return; }
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "z") { ev.preventDefault(); desfazer(); return; }
     if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
     if (ui.especial && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); fecharEspecial(); return; }
@@ -1329,7 +1431,7 @@
     var j = E().jogada, k = ev.key.toLowerCase();
     var pos = "abcd".indexOf(k); if (pos < 0) pos = "1234".indexOf(k);
     var lista = j.aberta ? j.ordemOculta : j.ordem;
-    if (pos >= 0 && k.length === 1 && pos < lista.length) { ev.preventDefault(); if (motor.responder(lista[pos]) !== null) depois(); return; }
+    if (pos >= 0 && k.length === 1 && pos < lista.length) { ev.preventDefault(); if (motor.responder(lista[pos]) !== null) { somDaResposta(); depois(); } return; }
     if (k === "p" && j.etapa === "principal") { ev.preventDefault(); if (motor.passar()) depois(); }
     else if (k === "t" && motor.podeUsarTesoura()) { ev.preventDefault(); usarTesoura(); }
     else if (k === " " && !ev.target.matches("button")) { ev.preventDefault(); pausar(); }

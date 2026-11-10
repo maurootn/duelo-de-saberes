@@ -46,32 +46,7 @@ body[data-modo="claro"] {
   --titulo: linear-gradient(180deg, #E8284F 10%, #B80F2E 55%, #7A0A20 100%);
 }
 
-/* ---------- variáveis: prévia do tema Biologia (campo do microscópio, verde-folha e magenta de corante) ---------- */
-body[data-tema="biologia"] {
-  --fundo: #04120A; --fundo-2: #0E2C18;
-  --painel-solido: #0C2314;
-  --tinta: #F0FAEC; --tinta-suave: #AFCFAF;
-  --borda: rgba(255, 111, 196, .42); --borda-forte: #FF6FC4;
-  --acento-claro: #FFD3EC; --acento: #FF6FC4; --acento-escuro: #B01274; --sobre-acento: #2A0518;
-  --quente: #FF6FC4;
-  --verso-1: #3FA34B; --verso-2: #124A1B;
-  --luz: 190, 255, 200; --forca-luz: .16;
-  --logo-a1: #D9FFB8; --logo-a2: #7BD685; --logo-a3: #23762E; --logo-b1: #FF8AD0; --logo-b2: #B01274; --logo-traco: #04120A;
-  --brilho: 0 0 1.2rem rgba(255, 111, 196, .35);
-  --titulo: linear-gradient(180deg, #E4FFD0 8%, #8FE39A 50%, #2E8B3B 100%);
-}
-body[data-tema="biologia"][data-modo="claro"] {
-  --fundo: #EAF4E6; --fundo-2: #D0E7C8;
-  --painel-solido: #FFFFFF;
-  --tinta: #12301C; --tinta-suave: #47634F;
-  --borda: rgba(35, 118, 46, .45); --borda-forte: #23762E;
-  --acento: #E83FA2; --acento-escuro: #A20F6B; --sobre-acento: #FFFFFF; --acento-claro: #FF9AD6;
-  --prata: #12301C; --prata-escura: #47634F;
-  --ficha-traco: #12301C;
-  --luz: 255, 255, 255; --forca-luz: .6;
-  --brilho: 0 0 0 rgba(0, 0, 0, 0);
-  --titulo: linear-gradient(180deg, #2E8B3B, #124A1B);
-}
+/* o tema de Biologia fica em css/tema-biologia.css */
 
 /* ---------- base ---------- */
 *, *::before, *::after { box-sizing: border-box; }
@@ -199,7 +174,6 @@ body[data-modo="claro"] .logo-de { text-shadow: none; }
   --tinta: #FDF8EE; --prata: #EEF1F7; --painel-solido: #1B0A10; --logo-traco: #1C070D;
   --titulo: linear-gradient(180deg, #FFF6D2 8%, #F8CE5E 46%, #B27C12 54%, #F2BF45 78%, #FFE9A0 100%);
 }
-body[data-tema="biologia"] .barra { background: linear-gradient(180deg, #1B5A26, #0B2C13); }
 .barra-titulo { font-size: 1.15rem; margin-left: auto; }
 .barra-info { display: flex; flex-direction: column; line-height: 1.2; margin-left: .4rem; }
 .barra-info strong { font-family: var(--fonte-titulo); font-weight: 400; font-size: 1rem; text-transform: uppercase; }
@@ -296,12 +270,6 @@ body[data-modo="claro"] .amostra { border-color: var(--tinta); }
     radial-gradient(ellipse 120% 80% at 50% 100%, var(--fundo-2), transparent 70%),
     var(--fundo);
 }
-body[data-tema="biologia"] .tabuleiro, body[data-tema="biologia"] .pergunta {
-  background:
-    radial-gradient(circle at 38% 55%, transparent 0 42vmax, rgba(0, 0, 0, .5) 62vmax),
-    radial-gradient(ellipse 55% 60% at 38% 30%, rgba(var(--luz), var(--forca-luz)), transparent 70%),
-    var(--fundo);
-}
 .mesa { padding: .9rem 1.2rem 1.2rem; display: flex; flex-direction: column; gap: .8rem; min-height: 0; }
 .vez { display: flex; align-items: center; gap: .6rem; font-size: 1.15rem; }
 .vez strong { color: inherit; border-bottom: .22rem solid var(--cor-equipe); }
@@ -359,22 +327,6 @@ body[data-tema="palco"] .carta-numero {
   box-shadow: 0 0 0 .14rem var(--verso-2), 0 0 0 .24rem var(--acento), 0 .25rem .5rem rgba(0, 0, 0, .5);
 }
 
-/* verso da Biologia: célula vista ao microscópio, com o número no núcleo */
-body[data-tema="biologia"] .carta { border-radius: 1.6rem 1rem 1.7rem 1.1rem; }
-body[data-tema="biologia"] .carta-verso, body[data-tema="biologia"] .carta-frente { border-color: rgba(255, 255, 255, .7); box-shadow: 0 .3rem 0 #0A3411, 0 .7rem 1.1rem rgba(0, 0, 0, .5); }
-body[data-tema="biologia"] .carta-verso { background: radial-gradient(ellipse at 50% 35%, var(--verso-1), var(--verso-2) 85%); }
-body[data-tema="biologia"] .carta-verso::before {
-  content: ""; position: absolute; inset: 9% 12%; border-radius: 48% 52% 46% 54% / 55% 47% 53% 45%;
-  border: .2rem solid rgba(255, 255, 255, .6);
-  background:
-    radial-gradient(ellipse 9% 6% at 22% 30%, rgba(255, 255, 255, .5) 98%, transparent),
-    radial-gradient(ellipse 7% 10% at 80% 34%, rgba(255, 255, 255, .4) 98%, transparent),
-    radial-gradient(ellipse 10% 6% at 74% 76%, rgba(255, 255, 255, .45) 98%, transparent),
-    radial-gradient(ellipse 6% 8% at 24% 72%, rgba(255, 255, 255, .35) 98%, transparent),
-    rgba(255, 255, 255, .1);
-}
-body[data-tema="biologia"] .carta-numero { background: radial-gradient(circle at 35% 28%, #FF9AD6, #D4188A 70%); color: #fff; border: .14rem solid rgba(255, 255, 255, .8); }
-
 .carta-usada { border: .12rem dashed var(--borda); display: grid; place-items: center; background: rgba(0, 0, 0, .18); }
 .carta-valor-usado { font-family: var(--fonte-titulo); font-size: clamp(.9rem, 2.6vmin, 1.6rem); color: var(--tinta-suave); opacity: .45; }
 
@@ -417,7 +369,6 @@ body[data-modo="claro"] .placar-pontos { text-shadow: none; }
 }
 .telao::before { top: -.3rem; }
 .telao::after { bottom: -.3rem; }
-body[data-tema="biologia"] .telao::before, body[data-tema="biologia"] .telao::after { display: none; }
 .enunciado { font-family: var(--fonte-texto); font-weight: 700; font-size: clamp(1.25rem, 3.6vmin, 2.3rem); line-height: 1.25; text-wrap: balance; }
 .alternativas { display: grid; grid-template-columns: 1fr; gap: .7rem; }
 .alternativa {

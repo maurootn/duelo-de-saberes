@@ -408,3 +408,8 @@ body[data-modo="claro"] .campea { text-shadow: none; }
   .pular { bottom: 4.4rem; }
 }
 @media (prefers-reduced-motion: reduce) { .confete { display: none; } }
+
+/* ---------- Fase 5: botão de som na barra ---------- */
+.botao-som { padding-left: .6rem; padding-right: .6rem; }
+.botao-som svg { width: 1.3rem; height: 1.3rem; display: block; }
+.botao-som[aria-pressed="false"] { opacity: .7; }

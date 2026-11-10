@@ -1,0 +1,260 @@
+/* Duelo de Saberes 2.0 · Tema de Biologia (Fase 5)
+   Universo: microscopia e células, formas orgânicas. Cores: verde-folha e magenta de corante.
+   Duas versões: escuro (campo escuro do microscópio) e sala clara (campo claro, lâmina iluminada).
+   Só muda o que o plano manda mudar por tema: fundo, verso das cartas, revelação do valor, tela do passe e fonte dos títulos.
+   Tabuleiro, placar, cronômetro e especiais ficam no mesmo lugar. */
+
+/* ---------- fontes dos títulos (Google Fonts, licença OFL, embutidas) ---------- */
+@font-face { font-family: "Lilita One"; src: url("../fontes/lilita-one-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Fredoka Titulo"; src: url("../fontes/fredoka-latin-700-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+
+/* ---------- variáveis: campo escuro ---------- */
+body[data-tema="biologia"] {
+  --fonte-titulo: "Lilita One", "Bungee", "Arial Black", sans-serif;
+  --fundo: #04120A; --fundo-2: #0E2C18;
+  --painel-solido: #0C2314;
+  --tinta: #F0FAEC; --tinta-suave: #AFCFAF;
+  --borda: rgba(255, 111, 196, .42); --borda-forte: #FF6FC4;
+  --acento-claro: #FFD3EC; --acento: #FF6FC4; --acento-escuro: #B01274; --sobre-acento: #2A0518;
+  --quente: #FF6FC4;
+  --verso-1: #4DB75A; --verso-2: #12511D;
+  --luz: 170, 255, 185; --forca-luz: .2;
+  --logo-a1: #D9FFB8; --logo-a2: #7BD685; --logo-a3: #23762E; --logo-b1: #FF8AD0; --logo-b2: #B01274; --logo-traco: #04120A;
+  --brilho: 0 0 1.2rem rgba(255, 111, 196, .35);
+  --titulo: linear-gradient(180deg, #E4FFD0 8%, #8FE39A 50%, #2E8B3B 100%);
+  /* próprias do tema */
+  --bio-ser: #7BD685; --bio-ser-forca: .2; --bio-corante: #FF6FC4;
+  --bio-borda: rgba(0, 0, 0, .78);
+  --bio-membrana: #C9F5B8; --bio-sombra: #0A3411; --bio-cromossomo: #FFE3F4;
+  --bio-campo-1: #1E5A2B; --bio-campo-2: #06200E; --bio-reticulo: #D9FFD0;
+  --bio-vidro: rgba(255, 255, 255, .13); --bio-vidro-borda: rgba(255, 255, 255, .5);
+}
+body[data-tema="biologia"][data-fonte="b"] { --fonte-titulo: "Fredoka Titulo", "Bungee", "Arial Black", sans-serif; }
+
+/* ---------- variáveis: sala clara (campo claro) ---------- */
+body[data-tema="biologia"][data-modo="claro"] {
+  --fundo: #F1F6E8; --fundo-2: #D6E9CB;
+  --painel: #FFFFFF; --painel-2: #F6FAF0; --painel-solido: #FFFFFF;
+  --tinta: #12301C; --tinta-suave: #47634F;
+  --borda: rgba(35, 118, 46, .45); --borda-forte: #23762E;
+  --acento: #E83FA2; --acento-escuro: #A20F6B; --sobre-acento: #FFFFFF; --acento-claro: #FF9AD6;
+  --quente: #C2187F;
+  --prata: #12301C; --prata-escura: #47634F;
+  --ficha-traco: #12301C;
+  --luz: 255, 255, 255; --forca-luz: .9;
+  --brilho: 0 0 0 rgba(0, 0, 0, 0);
+  --sombra: 0 .4rem 1rem rgba(18, 48, 28, .18);
+  --titulo: linear-gradient(180deg, #2E8B3B, #124A1B);
+  --logo-traco: #FFFFFF;
+  --bio-ser: #2E8B3B; --bio-ser-forca: .26; --bio-corante: #D4188A;
+  --bio-borda: rgba(70, 105, 75, .5);
+  --bio-sombra: #1B5A26; --bio-cromossomo: #FFFFFF;
+  --bio-campo-1: #FFFFFF; --bio-campo-2: #D3E6C6; --bio-reticulo: #12301C;
+  --bio-vidro: rgba(255, 255, 255, .6); --bio-vidro-borda: rgba(35, 118, 46, .45);
+}
+
+/* ---------- fundo: campo de visão do microscópio ---------- */
+body[data-tema="biologia"] .tabuleiro, body[data-tema="biologia"] .pergunta { background: var(--fundo); }
+.bio-campo { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--fundo); color: var(--bio-ser); }
+.bio-luz {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(circle at 50% 52%, transparent 0 40vmax, var(--bio-borda) 58vmax),
+    radial-gradient(circle at 50% 46%, rgba(var(--luz), var(--forca-luz)) 0, transparent 44vmax);
+}
+.bio-ser { position: absolute; opacity: var(--bio-ser-forca); animation: bio-deriva var(--t) linear infinite; transform: rotate(var(--g)); }
+.bio-ser[style*="--k:1"] { filter: blur(.1rem); opacity: calc(var(--bio-ser-forca) * .75); }
+.bio-ser[style*="--k:2"] { filter: blur(.22rem); opacity: calc(var(--bio-ser-forca) * .55); }
+.bio-ser svg { display: block; width: 100%; height: auto; overflow: visible; }
+.bio-cor { fill: var(--bio-corante); fill-opacity: .8; }
+@keyframes bio-deriva {
+  0%, 100% { transform: translate(0, 0) rotate(var(--g)); }
+  25% { transform: translate(1.8rem, -1.1rem) rotate(calc(var(--g) + 9deg)); }
+  50% { transform: translate(.5rem, 1.5rem) rotate(calc(var(--g) - 5deg)); }
+  75% { transform: translate(-1.5rem, .3rem) rotate(calc(var(--g) + 6deg)); }
+}
+.bio-reticulo { position: absolute; inset: 1.5vmin; width: calc(100% - 3vmin); height: calc(100% - 3vmin); opacity: .16; }
+.bio-escala { position: absolute; left: 1.1rem; bottom: .7rem; opacity: .55; font-size: .68rem; font-weight: 700; display: grid; gap: .1rem; justify-items: center; }
+.bio-escala i { display: block; width: 5rem; height: .5rem; border: solid currentColor; border-width: 0 .12rem .14rem; }
+
+body[data-tema="biologia"] .barra { background: linear-gradient(180deg, #1B5A26, #0B2C13); border-bottom-color: #7BD685; }
+body[data-tema="biologia"] .telao::before, body[data-tema="biologia"] .telao::after { display: none; }
+body[data-tema="biologia"] .telao { border-radius: 1.4rem 1rem 1.5rem 1.1rem; }
+body[data-tema="biologia"] .sobre { background: radial-gradient(ellipse at 50% 40%, rgba(10, 44, 20, .86), rgba(1, 8, 4, .96)); }
+body[data-tema="biologia"] .passe-titulo, body[data-tema="biologia"] .final-topo h1 { letter-spacing: .02em; }
+
+/* ---------- verso das cartas: cada carta é uma célula, com o número no núcleo ---------- */
+body[data-tema="biologia"] .carta { border-radius: 46% 54% 50% 50% / 54% 48% 52% 46%; }
+body[data-tema="biologia"] .carta:nth-child(4n + 2) { border-radius: 53% 47% 45% 55% / 47% 55% 45% 53%; }
+body[data-tema="biologia"] .carta:nth-child(4n + 3) { border-radius: 48% 52% 55% 45% / 52% 45% 55% 48%; }
+body[data-tema="biologia"] .carta:nth-child(4n) { border-radius: 51% 49% 47% 53% / 45% 52% 48% 55%; }
+body[data-tema="biologia"] .carta-verso, body[data-tema="biologia"] .carta-frente {
+  border: .2rem solid var(--bio-membrana);
+  box-shadow: 0 .3rem 0 var(--bio-sombra), 0 .7rem 1.1rem rgba(0, 0, 0, .5), inset 0 0 0 .2rem rgba(255, 255, 255, .16), inset 0 -.9rem 1.3rem rgba(0, 0, 0, .28);
+}
+body[data-tema="biologia"] .carta-verso { background: radial-gradient(ellipse at 50% 36%, var(--verso-1), var(--verso-2) 90%); }
+body[data-tema="biologia"] .carta-verso::before {
+  content: ""; position: absolute; inset: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 150' preserveAspectRatio='none'%3E%3Cg fill='white' fill-opacity='.3' stroke='white' stroke-opacity='.6' stroke-width='1.4'%3E%3Cellipse cx='42' cy='46' rx='15' ry='8' transform='rotate(-28 42 46)'/%3E%3Cellipse cx='160' cy='104' rx='15' ry='8' transform='rotate(-34 160 104)'/%3E%3Cellipse cx='150' cy='38' rx='11' ry='6' transform='rotate(30 150 38)'/%3E%3C/g%3E%3Cg fill='none' stroke='white' stroke-opacity='.65' stroke-width='1.3' stroke-linecap='round'%3E%3Cpath d='M32 50q4-7 8-2t7-3t6 0' /%3E%3Cpath d='M151 108q4-7 8-2t7-3t5 0'/%3E%3Cpath d='M142 36q4 5 8 1t7 4'/%3E%3Cpath d='M62 52q-12 22 0 46M54 56q-9 18 0 38'/%3E%3Cpath d='M138 54q12 20 0 44'/%3E%3C/g%3E%3Cg fill='white' fill-opacity='.2' stroke='white' stroke-opacity='.5' stroke-width='1.2'%3E%3Ccircle cx='48' cy='106' r='10'/%3E%3Ccircle cx='112' cy='126' r='6'/%3E%3Ccircle cx='86' cy='24' r='5'/%3E%3C/g%3E%3Cg fill='rgb(255,154,214)' fill-opacity='.85'%3E%3Ccircle cx='70' cy='122' r='2.4'/%3E%3Ccircle cx='80' cy='128' r='2'/%3E%3Ccircle cx='122' cy='22' r='2.4'/%3E%3Ccircle cx='112' cy='18' r='1.8'/%3E%3Ccircle cx='170' cy='70' r='2.2'/%3E%3Ccircle cx='28' cy='78' r='2.2'/%3E%3Ccircle cx='136' cy='122' r='1.8'/%3E%3C/g%3E%3Cellipse cx='74' cy='34' rx='34' ry='10' fill='white' fill-opacity='.16' transform='rotate(-14 74 34)'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+body[data-tema="biologia"] .carta:nth-child(3n + 2) .carta-verso::before { transform: scaleX(-1); }
+body[data-tema="biologia"] .carta:nth-child(3n) .carta-verso::before { transform: rotate(180deg); }
+body[data-tema="biologia"] .carta-numero {
+  background: radial-gradient(circle at 35% 28%, #FFB3E0, #E0389A 55%, #A20F6B);
+  color: #FFFFFF; border: .14rem solid rgba(255, 255, 255, .85);
+  box-shadow: 0 0 0 .28rem rgba(224, 56, 154, .3), 0 .2rem .5rem rgba(0, 0, 0, .45);
+  text-shadow: 0 .06em 0 rgba(90, 5, 55, .8);
+}
+body[data-tema="biologia"] .carta-frente {
+  background:
+    radial-gradient(ellipse 60% 40% at 38% 26%, rgba(255, 255, 255, .7), transparent 70%),
+    radial-gradient(ellipse at 50% 40%, #FFD3EC, #FF6FC4 60%, #C2187F);
+  color: #3A0522; border-color: #FFFFFF;
+}
+body[data-tema="biologia"] .carta-valor { font-size: clamp(1.6rem, 6.5vmin, 4.2rem); }
+body[data-tema="biologia"] button.carta:not(.virando):hover .carta-verso,
+body[data-tema="biologia"] .carta.marcada .carta-verso { box-shadow: 0 .3rem 0 var(--bio-sombra), 0 0 0 .22rem #FFFFFF, 0 0 1.6rem rgba(255, 111, 196, .9); }
+body[data-tema="biologia"] .carta-usada { border-radius: inherit; }
+
+/* ---------- revelação da carta: mitose ----------
+   A carta vai ao centro e cresce. O núcleo se desfaz (prófase), os cromossomos se alinham no equador (metáfase),
+   as cromátides vão para os polos (anáfase), surgem dois núcleos (telófase), a célula se parte em duas (citocinese)
+   e o valor aparece entre as células-filhas. Dura 2,6 s, depois de 0,35 s de viagem até o centro. */
+body[data-tema="biologia"] .carta.virando {
+  z-index: 5; transform: translate(var(--mt-x, 0), var(--mt-y, 0)) scale(var(--mt-e, 1.08));
+  transition: transform .5s cubic-bezier(.3, 1.2, .5, 1);
+}
+body[data-tema="biologia"] .carta.virando .carta-giro { transform: none; z-index: 2; }
+body[data-tema="biologia"] .carta.virando .carta-verso { animation: mt-some .3s .1s both; }
+body[data-tema="biologia"] .carta.virando .carta-frente { transform: none; animation: mt-valor 2.6s .35s both; box-shadow: 0 .3rem 0 var(--acento-escuro), 0 0 2rem rgba(255, 255, 255, .8); }
+/* carta redesenhada já aberta (por baixo do aviso do especial): sem repetir a animação */
+body[data-tema="biologia"] .carta.virando.revelada .carta-verso { visibility: hidden; animation: none; }
+body[data-tema="biologia"] .carta.virando.revelada .carta-frente { animation: none; }
+@keyframes mt-some { to { opacity: 0; } }
+@keyframes mt-valor {
+  0%, 76% { opacity: 0; transform: scale(.15); }
+  88% { opacity: 1; transform: scale(1.14); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.mitose { position: absolute; inset: -3%; z-index: 1; pointer-events: none; }
+.mitose svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 .5rem .8rem rgba(0, 0, 0, .45)); }
+.mitose * { transform-box: fill-box; transform-origin: center; }
+.mt-memb { fill: var(--bio-membrana); }
+.mt-cito-1 { stop-color: var(--verso-1); } .mt-cito-2 { stop-color: var(--verso-2); }
+.mt-nuc-1 { stop-color: #FFB3E0; } .mt-nuc-2 { stop-color: #C2187F; }
+.mt-organelas { fill: rgba(255, 255, 255, .38); animation: mt-organelas 2.6s .35s both; }
+.mt-fuso { animation: mt-fuso 2.6s .35s both; }
+.mt-fuso path { fill: none; stroke: rgba(255, 255, 255, .6); stroke-width: 1; }
+.mt-fuso circle { fill: #FFFFFF; }
+.mt-nucleo { stroke: rgba(255, 255, 255, .85); stroke-width: 2.5; animation: mt-nucleo 2.6s .35s both; }
+.mt-cromossomos { animation: mt-cromossomos 2.6s .35s both; }
+.mt-par { animation: mt-par 2.6s .35s both; }
+.mt-crom { fill: none; stroke: var(--bio-cromossomo); stroke-width: 6.5; stroke-linecap: round; filter: drop-shadow(0 0 2px #E0389A); }
+.mt-vai-e { animation: mt-vai-e 2.6s .35s both; }
+.mt-vai-d { animation: mt-vai-d 2.6s .35s both; }
+.mt-cel-e { animation: mt-cel-e 2.6s .35s both; }
+.mt-cel-d { animation: mt-cel-d 2.6s .35s both; }
+.mt-filho { stroke: rgba(255, 255, 255, .85); stroke-width: 2; }
+.mt-filho-e { animation: mt-filho-e 2.6s .35s both; }
+.mt-filho-d { animation: mt-filho-d 2.6s .35s both; }
+
+@keyframes mt-nucleo { 0% { opacity: 1; transform: scale(1); } 6% { transform: scale(1.08); } 16%, 100% { opacity: 0; transform: scale(1.35); } }
+@keyframes mt-organelas { 0% { opacity: 1; } 34%, 100% { opacity: 0; } }
+@keyframes mt-cromossomos { 0%, 7% { opacity: 0; } 18%, 62% { opacity: 1; } 74%, 100% { opacity: 0; } }
+@keyframes mt-par { 0%, 10% { transform: translateX(var(--dx)) rotate(var(--r)) scale(.6); } 34%, 100% { transform: none; } }
+@keyframes mt-fuso { 0%, 16% { opacity: 0; } 32%, 56% { opacity: 1; } 68%, 100% { opacity: 0; } }
+@keyframes mt-vai-e { 0%, 40% { transform: none; } 60%, 100% { transform: translateX(-58px); } }
+@keyframes mt-vai-d { 0%, 40% { transform: none; } 60%, 100% { transform: translateX(58px); } }
+@keyframes mt-cel-e {
+  0%, 36% { transform: none; opacity: 1; }
+  60% { transform: translateX(-30px) scale(.8, .93); }
+  80% { transform: translateX(-58px) scale(.54, .8); opacity: 1; }
+  100% { transform: translateX(-124px) scale(.5, .74); opacity: 0; }
+}
+@keyframes mt-cel-d {
+  0%, 36% { transform: none; opacity: 1; }
+  60% { transform: translateX(30px) scale(.8, .93); }
+  80% { transform: translateX(58px) scale(.54, .8); opacity: 1; }
+  100% { transform: translateX(124px) scale(.5, .74); opacity: 0; }
+}
+@keyframes mt-filho-e { 0%, 60% { opacity: 0; transform: scale(.4); } 76%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateX(-66px); } }
+@keyframes mt-filho-d { 0%, 60% { opacity: 0; transform: scale(.4); } 76%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateX(66px); } }
+
+/* ---------- tela do passe: lâmina sob o microscópio ---------- */
+.micro {
+  --d: clamp(15rem, 52vmin, 30rem); --fx: 0; --fy: 0; --zoom: 1; --vel: 450ms;
+  position: relative; width: var(--d); height: var(--d); flex: none; display: grid; place-items: center;
+  transition: width .4s, height .4s;
+}
+.micro.pequeno { --d: clamp(8.5rem, 26vmin, 14rem); }
+.micro-lamina {
+  position: absolute; left: 50%; top: 50%; width: min(calc(var(--d) * 1.95), 96vw); height: calc(var(--d) * .56);
+  transform: translate(-50%, -50%) rotate(-4deg); border-radius: .5rem; overflow: hidden;
+  background: linear-gradient(115deg, var(--bio-vidro), transparent 38%, var(--bio-vidro) 62%, transparent);
+  border: .1rem solid var(--bio-vidro-borda);
+  box-shadow: inset 0 0 0 .12rem rgba(255, 255, 255, .12), 0 .6rem 1.4rem rgba(0, 0, 0, .35);
+  animation: micro-lamina .6s cubic-bezier(.2, 1, .3, 1) both;
+}
+@keyframes micro-lamina { from { transform: translate(-150%, -50%) rotate(-4deg); opacity: 0; } }
+.micro-etiqueta {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 21%; display: grid; place-items: center; padding: .2rem;
+  background: rgba(255, 255, 255, .86); color: #12301C; border-right: .12rem solid #E83FA2;
+  font-family: var(--fonte-titulo); font-size: calc(var(--d) * .052); line-height: 1.05; text-transform: uppercase; text-align: center;
+}
+.micro-campo {
+  position: relative; width: 100%; height: 100%; border-radius: 50%; overflow: hidden;
+  background: radial-gradient(circle at 50% 46%, var(--bio-campo-1), var(--bio-campo-2) 78%);
+  border: calc(var(--d) * .034) solid #1B211D;
+  box-shadow: 0 0 0 .16rem #77827B, 0 0 0 .5rem #0B0F0C, 0 1rem 2.4rem rgba(0, 0, 0, .6);
+  animation: micro-entra .5s .15s cubic-bezier(.2, 1.3, .4, 1) both;
+}
+@keyframes micro-entra { from { transform: scale(.6); opacity: 0; } }
+.micro-campo::after { content: ""; position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 calc(var(--d) * .13) rgba(0, 0, 0, .6); pointer-events: none; }
+body[data-modo="claro"] .micro-campo::after { box-shadow: inset 0 0 calc(var(--d) * .1) rgba(40, 70, 45, .45); }
+.micro-plano {
+  position: absolute; inset: 0;
+  transform: translate(calc(var(--fx) * var(--d) * var(--zoom) * -1), calc(var(--fy) * var(--d) * var(--zoom) * -1)) scale(var(--zoom));
+  transition: transform var(--vel) cubic-bezier(.3, .9, .4, 1);
+}
+.micro-po { position: absolute; width: calc(var(--d) * .016); height: calc(var(--d) * .016); border-radius: 50%; background: var(--bio-reticulo); opacity: .22; }
+.micro-celula {
+  position: absolute; left: calc(50% + var(--cx) * var(--d) - var(--d) * .125); top: calc(50% + var(--cy) * var(--d) - var(--d) * .125);
+  width: calc(var(--d) * .25); height: calc(var(--d) * .25); display: grid; place-items: center;
+  transition: filter .18s, opacity .18s;
+}
+.micro-corpo {
+  width: 100%; height: 100%; display: grid; place-items: center;
+  border-radius: 48% 52% 46% 54% / 55% 47% 53% 45%;
+  background: radial-gradient(circle at 38% 32%, color-mix(in srgb, var(--cor-equipe) 55%, #FFFFFF), var(--cor-equipe) 58%, color-mix(in srgb, var(--cor-equipe) 62%, #000000));
+  border: calc(var(--d) * .009) solid rgba(255, 255, 255, .85);
+  box-shadow: inset 0 calc(var(--d) * -.02) calc(var(--d) * .03) rgba(0, 0, 0, .3);
+  animation: micro-pulsa 2.8s calc(var(--k) * -.7s) ease-in-out infinite alternate;
+}
+.micro-celula:nth-child(odd) .micro-corpo { border-radius: 53% 47% 55% 45% / 46% 54% 46% 54%; }
+@keyframes micro-pulsa { from { transform: scale(.94) rotate(-3deg); } to { transform: scale(1.04) rotate(3deg); } }
+.micro-corpo .ficha { width: 52%; height: 52%; }
+.micro-nome {
+  position: absolute; top: 98%; left: 50%; transform: translateX(-50%); white-space: nowrap;
+  font-weight: 700; font-size: calc(var(--d) * .034); line-height: 1.1; color: var(--tinta);
+  text-shadow: 0 .06em .3em var(--fundo), 0 0 .5em var(--fundo);
+}
+.micro.sorteando .micro-celula:not(.em-foco), .micro.parado .micro-celula:not(.em-foco) { filter: blur(calc(var(--d) * .012)); opacity: .5; }
+.micro.travou .em-foco .micro-corpo { animation: micro-trava .45s ease-out 2; }
+.micro.parado .em-foco .micro-corpo { box-shadow: 0 0 0 calc(var(--d) * .008) #FFFFFF, 0 0 calc(var(--d) * .06) var(--cor-equipe); }
+@keyframes micro-trava { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.micro-reticulo { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke: var(--bio-reticulo); stroke-width: .6; opacity: .5; pointer-events: none; }
+.micro.pequeno .micro-nome, .micro.pequeno .micro-lamina { display: none; }
+
+/* ---------- celular ---------- */
+@media (max-width: 639px) {
+  .micro { --d: min(74vw, 20rem); }
+  .micro.pequeno { --d: min(40vw, 10rem); }
+  .bio-escala { display: none; }
+}
+
+/* ---------- "reduzir animações": nada de deriva nem de mitose; a carta só mostra o valor ---------- */
+@media (prefers-reduced-motion: reduce) {
+  body[data-tema="biologia"] .carta.virando { transform: none; }
+  .micro-plano { transition: none; }
+}
