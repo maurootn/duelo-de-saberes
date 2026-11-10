@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e0509">
+<meta name="robots" content="noindex">
+<title>Galeria de avatares</title>
+<link rel="icon" type="image/svg+xml" href="img/icone.svg">
+<link rel="stylesheet" href="css/estilo.css">
+<link rel="stylesheet" href="css/motor.css">
+<link rel="stylesheet" href="css/avatares.css">
+<style>
+  /* Galeria de conferência da Fase 6: todos os mascotes, nos dois traços, em cada estado animado. */
+  body { padding: 1rem clamp(.8rem, 3vw, 2rem) 3rem; }
+  .gal-topo { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem 1.2rem; margin-bottom: 1rem; }
+  .gal-topo h1 { font-size: 1.5rem; }
+  .gal-topo p { color: var(--tinta-suave); font-size: .9rem; flex-basis: 100%; }
+  .gal-filtros { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+  .gal-filtros span { font-size: .8rem; color: var(--tinta-suave); margin-left: .4rem; }
+  .gal-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: .7rem; }
+  .gal-item { display: flex; flex-direction: column; align-items: center; gap: .2rem; padding: .6rem .4rem; border-radius: .9rem; background: var(--painel); border: .1rem solid var(--borda); text-align: center; }
+  .gal-item .avatar { width: 6.2rem; }
+  .gal-item strong { font-size: .85rem; }
+  .gal-item small { font-size: .7rem; color: var(--tinta-suave); }
+  .gal-sec { margin: 1.4rem 0 .6rem; font-size: 1.05rem; }
+</style>
+</head>
+<body data-tema="palco" data-modo="escuro">
+<header class="gal-topo">
+  <h1>Galeria de avatares</h1>
+  <a class="botao botao-contorno botao-pequeno" href="index.html">Voltar ao jogo</a>
+  <p>Conferência da Fase 6: os 11 mascotes originais nos dois traços e nos 6 estados animados. Use os botões para trocar estado, traço, acessório e modo.</p>
+  <div class="gal-filtros" id="filtros"></div>
+</header>
+<main id="galeria"></main>
+<script src="js/dados.js"></script>
+<script src="js/avatares.js"></script>
+<script>
+(function () {
+  "use strict";
+  var A = window.AVATAR, D = window.DADOS;
+  var s = { estado: "parado", estilo: "palco", acess: "nenhum", expr: "confiante", modo: "escuro" };
+  function grupo(campo, lista, rotulo) {
+    return '<span>' + rotulo + '</span>' + lista.map(function (x) {
+      return '<button class="chip' + (s[campo] === x.id ? " ativa" : "") + '" data-campo="' + campo + '" data-valor="' + x.id + '">' + x.nome + '</button>';
+    }).join("");
+  }
+  function desenhar() {
+    document.body.dataset.modo = s.modo;
+    document.getElementById("filtros").innerHTML =
+      grupo("estado", A.ESTADOS, "Estado") + grupo("estilo", A.ESTILOS, "Traço") + grupo("expr", A.EXPRESSOES, "Expressão") +
+      grupo("acess", A.ACESSORIOS, "Acessório") + grupo("modo", [{ id: "escuro", nome: "Escuro" }, { id: "claro", nome: "Sala clara" }], "Modo");
+    var h = "", personagens = A.personagens;
+    [["Mascotes das disciplinas", personagens.filter(function (p) { return p.disciplina; })], ["Genéricos", personagens.filter(function (p) { return !p.disciplina; })]].forEach(function (g) {
+      h += '<h2 class="gal-sec">' + g[0] + '</h2><div class="gal-grade">' + g[1].map(function (p, k) {
+        var cor = D.cores[k % D.cores.length];
+        return '<div class="gal-item">' + A.svg({ base: p.id, expr: s.expr, acess: s.acess, tom: 0, estilo: s.estilo }, { cor: cor.hex, estado: s.estado }) +
+          '<strong>' + p.nome + '</strong><small>' + (p.disciplina ? A.NOMES_DISCIPLINA[p.disciplina] : "genérico") + ' · ' + cor.nome.toLowerCase() + '</small></div>';
+      }).join("") + '</div>';
+    });
+    h += '<h2 class="gal-sec">Tons de uma mesma cor</h2><div class="gal-grade">' + A.TONS.map(function (t) {
+      return '<div class="gal-item">' + A.svg({ base: "celula", expr: s.expr, acess: s.acess, tom: t.id, estilo: s.estilo }, { cor: "#2F6FED", estado: s.estado }) + '<strong>' + t.nome + '</strong></div>';
+    }).join("") + '</div>';
+    document.getElementById("galeria").innerHTML = h;
+  }
+  document.addEventListener("click", function (ev) {
+    var b = ev.target.closest("[data-campo]");
+    if (!b) return;
+    s[b.dataset.campo] = b.dataset.valor;
+    desenhar();
+  });
+  desenhar();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "id": "./",
+  "name": "Duelo de Saberes",
+  "short_name": "Duelo",
+  "description": "Jogo de perguntas por equipes para a sala de aula: vinte cartas viradas, perguntas de 100 a 500, passe, roletas e pódio. Funciona sem internet depois da primeira abertura.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0e0509",
+  "theme_color": "#0e0509",
+  "categories": ["education", "games"],
+  "icons": [
+    { "src": "img/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "img/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "img/icone-mascaravel-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "img/icone-mascaravel-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "img/icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "screenshots": [
+    { "src": "img/tela-projetor.png", "sizes": "1280x720", "type": "image/png", "form_factor": "wide", "label": "Tabuleiro no projetor" },
+    { "src": "img/tela-celular.png", "sizes": "540x1170", "type": "image/png", "form_factor": "narrow", "label": "Tabuleiro no celular" }
+  ]
+}

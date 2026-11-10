@@ -1,0 +1,149 @@
+/* Duelo de Saberes · app instalável (Fase 9)
+   Botão de tela cheia, botão de instalar, avisos, janela "Como instalar", áreas seguras (entalhe do celular)
+   e ajustes de layout para celular deitado, tablet e projetor. */
+
+/* ---------- áreas seguras: entalhe e barra de gestos ---------- */
+#app { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+#painel-visual { left: calc(.8rem + env(safe-area-inset-left, 0px)); bottom: calc(.8rem + env(safe-area-inset-bottom, 0px)); }
+
+/* ---------- botão de tela cheia, ao lado do Visual ---------- */
+#painel-visual { display: flex; align-items: flex-end; gap: .5rem; }
+.pv-tela-cheia { padding: .5rem; width: 44px; justify-content: center; }
+.pv-tela-cheia svg { fill: none; }
+.pv-tela-cheia[aria-pressed="true"] { background: var(--acento); color: var(--sobre-acento); }
+/* em tela cheia no projetor ninguém precisa do botão o tempo todo: fica discreto até o mouse chegar perto */
+:fullscreen #painel-visual .pv-botao:not(:hover):not(:focus-visible) { opacity: .55; }
+
+/* ---------- botão de instalar na tela inicial ---------- */
+.botao-instalar { display: inline-flex; align-items: center; gap: .45rem; }
+.icone-instalar { width: 1.15em; height: 1.15em; flex: none; }
+
+/* ---------- avisos no alto da tela ---------- */
+#aviso-app {
+  position: fixed; z-index: 90; left: 50%; top: calc(.7rem + env(safe-area-inset-top, 0px));
+  transform: translate(-50%, -160%); width: max-content; max-width: calc(100vw - 1.6rem);
+  display: flex; align-items: center; flex-wrap: nowrap; justify-content: center; gap: .5rem .8rem;
+  padding: .55rem .6rem .55rem 1rem; border-radius: 1rem;
+  background: var(--painel-solido); color: var(--tinta); border: 2px solid var(--borda-forte);
+  box-shadow: 0 .5rem 1.4rem rgba(0, 0, 0, .55); font-family: var(--fonte-texto); font-size: 15px; font-weight: 700;
+  transition: transform .35s cubic-bezier(.2, .9, .3, 1.2); pointer-events: none;
+}
+#aviso-app.visivel { transform: translate(-50%, 0); pointer-events: auto; }
+#aviso-app p { margin: 0; }
+#aviso-app:has(.botao) { flex-wrap: wrap; }
+.aviso-fechar { flex: none; }
+#aviso-app .botao { font-size: 14px; }
+.aviso-fechar { width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--painel-2); color: inherit; font-size: 20px; line-height: 1; }
+
+/* ---------- janela "Como instalar" ---------- */
+.janela-app {
+  position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: 1rem;
+  background: rgba(8, 2, 5, .72); backdrop-filter: blur(3px);
+}
+.janela-app-caixa {
+  width: min(36rem, 100%); max-height: calc(100dvh - 2rem); overflow: auto; display: grid; gap: .9rem;
+  padding: 1.1rem 1.2rem 1.2rem; border-radius: 1.2rem; border: 2px solid var(--borda-forte);
+  background: linear-gradient(180deg, var(--painel-2), var(--painel)), var(--painel-solido); color: var(--tinta);
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, .7); font-family: var(--fonte-texto);
+}
+.janela-app-topo { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 0; }
+.janela-app-topo strong { font-family: var(--fonte-titulo); font-weight: 400; font-size: 1.15rem; color: var(--acento); }
+.janela-app-nota { margin: 0; color: var(--tinta-suave); font-size: .95rem; }
+.instalar-passos { margin: 0; padding: 0; list-style: none; display: grid; gap: .6rem; counter-reset: passo; }
+.instalar-passo { display: grid; gap: .2rem; padding: .7rem .9rem; border-radius: .8rem; border: 2px solid var(--borda); background: var(--painel); }
+.instalar-passo strong { font-size: 1rem; }
+.instalar-passo span { font-size: .95rem; line-height: 1.4; }
+.instalar-passo.instalar-este { border-color: var(--borda-forte); box-shadow: 0 0 0 .2rem rgba(245, 196, 81, .2); }
+.instalar-passo.instalar-este strong::after { content: " · este aparelho"; color: var(--acento); font-weight: 700; }
+.janela-app-acoes { display: flex; justify-content: flex-end; }
+
+body[data-contraste="alto"] #aviso-app, body[data-contraste="alto"] .janela-app-caixa, body[data-contraste="alto"] .instalar-passo {
+  background: #000 !important; color: #fff !important; border-color: #FFE600 !important; box-shadow: none !important;
+}
+body[data-contraste="alto"] .janela-app-topo strong { color: #FFE600; }
+
+@media (max-width: 639px) { #aviso-app { font-size: 13px; padding: .45rem .45rem .45rem .8rem; } }
+@media (prefers-reduced-motion: reduce) { #aviso-app { transition: none; } }
+
+/* ---------- celular em pé: placar fixo embaixo respeita a barra de gestos ---------- */
+@media (max-width: 639px) {
+  .tabuleiro .placar { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  body[data-tela="tabuleiro"] #painel-visual { bottom: calc(4.2rem + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ---------- tablet em paisagem e notebook pequeno (1024 a 1279): placar lateral um pouco mais largo,
+   para o nome da equipe não quebrar no meio ---------- */
+@media (min-width: 1024px) and (max-width: 1279px) and (orientation: landscape) {
+  .tabuleiro { grid-template-columns: 1fr minmax(17rem, 28vw); }
+  .placar-item { padding: .6rem; gap: .45rem; }
+  .placar-item .ficha-casa .av-casa { width: 3rem; }
+  .placar-item .placar-pontos { font-size: 1.35rem; }
+  .placar-nome { hyphens: manual; }
+}
+
+/* ---------- celular deitado (paisagem com pouca altura): tudo numa tela, como no projetor ---------- */
+@media (orientation: landscape) and (max-height: 540px) {
+  .barra { padding: .3rem .7rem; gap: .5rem; min-height: 0; }
+  .barra .logo-nome { display: none; }
+  .barra .botao-pequeno { min-height: 2.1rem; padding: .3rem .6rem; font-size: .75rem; }
+
+  /* início: logo menor e botões em linha */
+  .inicio { padding: .6rem 4rem 3.6rem; justify-content: center; }
+  .inicio-centro { gap: .6rem; }
+  .inicio .logo-grande { font-size: clamp(.75rem, 4.2vh, 1.15rem); flex-direction: row; gap: .6em; }
+  .inicio .logo-grande .logo-simbolo { width: 4em; height: 4em; }
+  .inicio-frase { font-size: .9rem; }
+  .inicio-acoes { flex-direction: row; flex-wrap: wrap; gap: .5rem; }
+  .inicio-acoes .botao { width: auto; min-height: 2.5rem; padding: .35rem .8rem; font-size: .85rem; }
+  .inicio-acoes .botao-enorme { font-size: 1rem; }
+  .inicio-rodape { display: none; }
+
+  /* tabuleiro: cartas ocupam a altura que sobra; placar à direita */
+  .tabuleiro { display: grid; grid-template: "barra barra" auto "mesa placar" 1fr / 1fr minmax(10.5rem, 27vw); height: 100vh; height: 100dvh; overflow: hidden; }
+  .tabuleiro .barra { grid-area: barra; }
+  .tabuleiro .mesa { grid-area: mesa; max-width: none; margin: 0; padding: .35rem .6rem .5rem; gap: .35rem; min-height: 0; }
+  .vez { font-size: .85rem; }
+  .vez .av-p { width: 1.6rem; }
+  .dicas p, .avisos p { font-size: .75rem; margin: 0; }
+  .cartas { flex: 1; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(4, 1fr); gap: .35rem; min-height: 0; }
+  .carta { aspect-ratio: auto; border-radius: .55rem; }
+  .tabuleiro .placar { grid-area: placar; position: static; margin: 0; max-height: none; overflow: auto; border-top: 0; border-left: .2rem solid var(--acento);
+    padding: .45rem .45rem calc(3.4rem + env(safe-area-inset-bottom, 0px)); box-shadow: -.4rem 0 1rem rgba(0, 0, 0, .35); }
+  .tabuleiro .placar-puxador { display: none; }
+  .tabuleiro .placar-titulo { display: none; }
+  .tabuleiro .placar-lista, .tabuleiro .placar.aberto .placar-lista { display: grid; grid-template-columns: 1fr; gap: .35rem; padding: 0; }
+  .tabuleiro .placar-item { padding: .3rem .4rem; gap: .35rem; border-left-width: .35rem; }
+  .tabuleiro .placar-item .ficha-casa .av-casa { width: 2.1rem; margin: -.2rem 0; }
+  .tabuleiro .placar-nome { font-size: .8rem; }
+  .tabuleiro .placar-nome em { font-size: .65rem; }
+  .tabuleiro .marcas { display: none; }
+  .tabuleiro .placar-pontos { font-size: 1.1rem; }
+  body[data-tela="tabuleiro"] #painel-visual { bottom: calc(.8rem + env(safe-area-inset-bottom, 0px)); }
+
+  /* pergunta: enunciado e alternativas à esquerda; cronômetro e botões à direita */
+  .pergunta { display: grid; grid-template: "barra barra" auto "corpo lado" 1fr / 1fr minmax(9.5rem, 24vw); height: 100vh; height: 100dvh; overflow: hidden; }
+  .pergunta .barra { grid-area: barra; }
+  .pergunta-corpo { grid-area: corpo; max-width: none; margin: 0; padding: .5rem .7rem .6rem; gap: .5rem; overflow: auto; justify-content: center; }
+  .telao { padding: .55rem .8rem; }
+  .enunciado { font-size: clamp(.95rem, 5.4vh, 1.35rem); }
+  .alternativas { grid-template-columns: 1fr 1fr; gap: .4rem; }
+  .alternativa { min-height: 2.6rem; padding-top: .3rem; padding-bottom: .3rem; font-size: .85rem; }
+  .pergunta-lado, .pergunta:not(.respondida) .pergunta-lado {
+    grid-area: lado; order: 0; max-width: none; margin: 0; flex-direction: column; justify-content: flex-start; gap: .5rem;
+    padding: .5rem .5rem calc(3.4rem + env(safe-area-inset-bottom, 0px)); overflow: auto;
+    background: linear-gradient(180deg, var(--painel-2), var(--painel)), var(--painel-solido); border-left: .2rem solid var(--acento);
+  }
+  .cronometro { width: clamp(4rem, 26vh, 6.5rem); }
+  .crono-numero { font-size: clamp(1.6rem, 12vh, 3rem); }
+  .lado-acoes { flex-direction: column; align-items: stretch; width: 100%; gap: .35rem; }
+  .lado-acoes .botao { min-height: 2.3rem; padding: .3rem .5rem; font-size: .8rem; }
+  .pergunta-lado .botao-enorme { width: 100%; font-size: .95rem; min-height: 2.6rem; }
+  .veredito { padding: .5rem; font-size: .85rem; }
+}
+
+/* ---------- telas em paisagem (projetor, notebook, tablet e celular deitados): no tabuleiro e na pergunta,
+   os botões Visual e Tela cheia vão para o canto direito, embaixo do placar / dos botões, sem cobrir cartas ---------- */
+@media (min-width: 1024px) and (orientation: landscape), (orientation: landscape) and (max-height: 540px) {
+  body:is([data-tela="tabuleiro"], [data-tela="pergunta"], [data-tela="resultado"]) #painel-visual { left: auto; right: calc(.8rem + env(safe-area-inset-right, 0px)); flex-direction: row-reverse; }
+  body:is([data-tela="tabuleiro"], [data-tela="pergunta"], [data-tela="resultado"]) .pv-caixa { left: auto; right: 0; }
+}

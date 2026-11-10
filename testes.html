@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e0509">
+<meta name="robots" content="noindex">
+<title>Duelo de Saberes · Lista de testes</title>
+<link rel="icon" type="image/svg+xml" href="img/icone.svg">
+<link rel="stylesheet" href="css/estilo.css">
+<style>
+  body { background: radial-gradient(ellipse 90% 50% at 50% 0, var(--fundo-2), var(--fundo) 80%) fixed; }
+  .pagina { max-width: 62rem; margin: 0 auto; padding: 1.2rem 1.2rem 4rem; display: grid; gap: 1.2rem; }
+  .topo { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  .topo h1 { font-size: 1.4rem; margin-left: auto; }
+  .bloco h2 { font-size: 1.05rem; }
+  .placar-testes { display: flex; gap: 1rem; flex-wrap: wrap; align-items: baseline; }
+  .placar-testes b { font-family: var(--fonte-titulo); font-weight: 400; font-size: 2.2rem; line-height: 1; }
+  .ok { color: var(--certo); } .falha { color: var(--errado); }
+  .grupo { margin-top: .9rem; }
+  .grupo h3 { font-size: .95rem; margin: 0 0 .35rem; color: var(--acento); text-transform: uppercase; letter-spacing: .06em; }
+  .linha { display: flex; gap: .6rem; align-items: flex-start; padding: .35rem 0; border-bottom: .06rem solid var(--borda); font-size: .95rem; }
+  .linha:last-child { border-bottom: 0; }
+  .selo { flex: none; min-width: 4.6rem; text-align: center; font-weight: 700; font-size: .75rem; padding: .15rem .4rem; border-radius: 99rem; }
+  .selo.ok { background: var(--certo); color: var(--sobre-certo); }
+  .selo.falha { background: var(--errado); color: var(--sobre-errado); }
+  .detalhe { display: block; color: var(--errado); font-size: .82rem; }
+  .manual label { display: grid; grid-template-columns: 1.6rem 1fr; gap: .6rem; align-items: start; padding: .5rem 0; border-bottom: .06rem solid var(--borda); cursor: pointer; }
+  .manual label:last-of-type { border-bottom: 0; }
+  .manual input { width: 1.3rem; height: 1.3rem; margin-top: .15rem; accent-color: var(--acento); }
+  .manual strong { display: block; }
+  .manual span span { color: var(--tinta-suave); font-size: .88rem; }
+  .acoes { display: flex; gap: .7rem; flex-wrap: wrap; }
+  .nota { margin-top: .4rem; }
+</style>
+</head>
+<body data-tema="palco" data-modo="escuro">
+<main class="pagina">
+  <header class="topo">
+    <a class="botao botao-contorno botao-pequeno" href="./">Voltar ao jogo</a>
+    <h1 class="barra-titulo">Lista de testes · Fases 4 a 10</h1>
+  </header>
+
+  <section class="bloco" aria-labelledby="t-auto">
+    <h2 id="t-auto">1. Testes automáticos das regras</h2>
+    <p class="nota">Rodam sozinhos ao abrir esta página. Cada teste monta uma partida, força a situação e confere pontos, vez, passe e roletas.</p>
+    <div class="placar-testes" id="resumo" role="status">Rodando…</div>
+    <div id="lista"></div>
+  </section>
+
+  <section class="bloco manual" aria-labelledby="t-manual">
+    <h2 id="t-manual">2. Conferência na tela (marque o que passou)</h2>
+    <p class="nota">Abra o jogo com o modo de depuração ligado (configuração → Regras e testes). O botão <b>Depuração</b>, no canto, força especiais, roletas, sorteio do passe, placar e cronômetro. As marcações ficam salvas neste aparelho.</p>
+    <div id="manual"></div>
+    <div class="acoes"><button class="botao botao-contorno botao-pequeno" id="limpar">Desmarcar tudo</button></div>
+  </section>
+</main>
+
+<script src="js/regras.js"></script>
+<script src="js/testes-regras.js"></script>
+<script>
+(function () {
+  "use strict";
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  /* ---------- automáticos ---------- */
+  function json(u) { return fetch(u, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error(u + ": HTTP " + r.status); return r.json(); }); }
+  /* Fase 10: além das regras (questões de teste), partidas inteiras de 5 rodadas com os bancos reais */
+  Promise.all([json("questoes/teste-biologia-1.json"), json("dados/questoes/biologia-1.json"), json("dados/questoes/quimica-1.json")])
+    .then(function (b) {
+      var banco = b[0];
+      var res = window.TESTES_REGRAS(window.REGRAS, banco).concat(window.TESTES_PILOTO(window.REGRAS, { biologia: b[1], quimica: b[2] })), falhas = res.filter(function (r) { return !r.ok; });
+      document.getElementById("resumo").innerHTML =
+        '<b class="' + (falhas.length ? "falha" : "ok") + '">' + (res.length - falhas.length) + ' de ' + res.length + '</b>' +
+        '<span>' + (falhas.length ? falhas.length + " teste(s) falharam" : "todos os testes passaram") + '</span>';
+      var grupos = {}, ordem = [];
+      res.forEach(function (r) { if (!grupos[r.grupo]) { grupos[r.grupo] = []; ordem.push(r.grupo); } grupos[r.grupo].push(r); });
+      document.getElementById("lista").innerHTML = ordem.map(function (g) {
+        return '<div class="grupo"><h3>' + esc(g) + '</h3>' + grupos[g].map(function (r) {
+          return '<div class="linha"><span class="selo ' + (r.ok ? "ok" : "falha") + '">' + (r.ok ? "passou" : "falhou") + '</span>' +
+            '<span>' + esc(r.nome) + (r.detalhe ? '<span class="detalhe">' + esc(r.detalhe) + '</span>' : '') + '</span></div>';
+        }).join("") + '</div>';
+      }).join("");
+    })
+    .catch(function (e) {
+      document.getElementById("resumo").innerHTML = '<span class="falha">Não consegui abrir as questões de teste (' + esc(e.message) + '). Abra esta página pelo GitHub Pages.</span>';
+    });
+
+  /* ---------- conferência manual ---------- */
+  var ITENS = [
+    ["Carta e valor", "A carta escolhida gira e mostra o valor antes da pergunta."],
+    ["Sorteio com marcador", "Sortear carta: um marcador percorre as cartas restantes, vai desacelerando, pisca na sorteada e só então ela vira."],
+    ["Animação de cada especial", "Depuração → Cartas desta rodada → escolha Congelou, Tudo ou Nada, Em Dobro ou Tesoura numa carta e abra. Congelou trinca e fica azul; Tudo ou Nada pisca em alarme com a borda em fogo; Em Dobro brilha com chuva de moedas; Tesoura corta a carta ao meio."],
+    ["Armadilha bloqueia o passe", "Em Congelou e Tudo ou Nada o botão aparece como \"Passar bloqueado\" e a tecla P não faz nada. Deixe o tempo acabar (Depuração → Esgotar o tempo): conta como erro."],
+    ["Congelou no placar", "Erre um Congelou: a equipe fica azul com a marca \"sem turno\" e, na vez dela, o tabuleiro avisa que foi pulada."],
+    ["Em Dobro", "Aparece \"as alternativas somem em … s\"; ao zerar, sobram só as letras, na mesma ordem de antes. O selo mostra o valor × 2."],
+    ["Letras ocultas", "Em Dobro depois dos 10 s, Às cegas depois dos 5 s e passe: tocando na letra que a equipe disse, a escolhida vira primeiro e mostra o conteúdo; depois viram as outras e o app dá ou tira os pontos sozinho. Se a questão for ao passe, só a escolhida é revelada."],
+    ["Tesoura", "Acerte a carta Tesoura: o ícone aparece no placar. Na próxima pergunta da equipe, Usar Tesoura (ou T) gira a roleta e risca as alternativas eliminadas. Force 1, 2 ou 3 na Depuração."],
+    ["Resposta em segredo", "Errou ou passou: a tela não mostra a resposta certa e leva ao passe."],
+    ["Passe com sorteio", "Com 3 ou mais equipes, a roleta das equipes gira e para em quem recebe. Equipe sem turno não aparece na roleta. Force a equipe na Depuração."],
+    ["Passe direto", "Com 2 equipes, a outra recebe direto, sem roleta."],
+    ["Passe aceito", "A pergunta volta só com as letras, embaralhadas, e 10 s. Acertou soma o valor + 50%; errou revela as alternativas e leva à roleta de punição."],
+    ["Roleta de punição", "Errou no passe: a roleta gira, para na fatia e mostra o efeito. Force cada uma das 8 fatias e confira o placar e as marcas."],
+    ["Ajuda ao lanterna", "Com uma equipe claramente em último, force Ajuda ao lanterna: a última ganha a metade. Se quem errou é a última, vira Meio estrago."],
+    ["Às cegas e Contra o relógio", "Depois da punição, as marcas aparecem no placar; na próxima pergunta da equipe as alternativas ficam só 5 s (com contagem na tela) ou o tempo é de 10 s."],
+    ["Desfazer", "Desfazer (ou Ctrl+Z) volta uma decisão por vez: resposta, passe, roleta e até a carta aberta por engano. Volta com o cronômetro pausado."],
+    ["Pódio parcial", "Ao fim de cada rodada, as barras crescem juntas na mesma velocidade (quem fez mais pontos cresce por mais tempo); depois a lista se reordena e mostra posições, pontos da rodada e quem subiu ou caiu."],
+    ["Morte súbita", "Na última rodada, Depuração → Empatar os dois primeiros → Terminar a rodada. Cada empatada responde uma de 500, sem passe e sem especiais, até sobrar uma."],
+    ["Pódio final", "Sobe o 3º, depois o 2º e por último o campeão, com os pontos contando; troféu e confete no 1º. Em seguida o gráfico da trajetória se forma ponto a ponto. Pular animação mostra tudo de uma vez."],
+    ["Partida salva", "Recarregue a página no meio da partida: a tela inicial oferece Continuar partida, com o cronômetro pausado."],
+    ["Teclado", "A–D ou 1–4 respondem (também as letras ocultas), P passa, T usa a Tesoura, espaço pausa, Ctrl+Z desfaz."],
+    ["Telas", "Projetor 16:9, tablet e celular: tabuleiro, pergunta, passe, roletas e pódios cabem sem rolar para o lado."],
+    ["Reduzir animações", "Com \"reduzir movimento\" ligado no aparelho, as animações ficam curtas e as roletas param quase na hora."],
+    ["Fase 7 · Voz no PC", "No Chrome ou Edge do PC: Configuração → Acessibilidade → Testar a voz. A frase é lida e a palavra lida fica em destaque logo abaixo do botão. Troque a voz no seletor e teste de novo (as que dizem \"funciona sem internet\" servem para a sala sem rede)."],
+    ["Fase 7 · Voz no celular", "No Chrome do Android: mesmo teste. Se não falar, confira o volume de mídia do celular e, em Configurações do Android → Saída de texto para fala, se há voz em português instalada."],
+    ["Fase 7 · Legenda na pergunta", "Abra uma carta: a voz lê só o enunciado e a palavra lida fica destacada no próprio enunciado. Pausar para a voz e o destaque; Ler de novo (ou L) recomeça. \"Sem legenda\" tira o destaque e mantém a voz."],
+    ["Fase 7 · Velocidade e volume", "Lenta, Normal e Rápida mudam a fala; Volume alto, Médio e Baixo mudam só a voz; \"Mais baixos\" abaixa só os efeitos sonoros."],
+    ["Fase 7 · Tempo extra por equipe", "Dê +10 s a uma equipe no cartão dela e comece: o cronômetro dela começa com 10 s a mais (30 numa questão de 20 s), também no passe que ela receber. No Contra o relógio continua 10 s. Nada na tela indica qual equipe tem tempo extra."],
+    ["Fase 7 · Turma com tempo extra", "Salve a turma, mude o tempo extra, carregue a turma de novo: volta o tempo extra salvo."],
+    ["Fase 7 · Alto contraste", "Ligue Alto contraste: fundo preto, texto branco, destaques amarelos, sem microscópio nem tabela periódica ao fundo, em Biologia, Química e Palco, nas versões escura e sala clara. Formas das equipes continuam no avatar."],
+    ["Fase 7 · Tamanho do texto", "Grande e Maior aumentam enunciado, alternativas, placar e menus. Confira no projetor e no celular se a pergunta ainda cabe sem rolar para o lado."],
+    ["Fase 7 · Reduzir pela configuração", "Animações → Reduzir (sem mexer no aparelho): sem mitose, sem deriva, roletas curtas, sem confete."],
+    ["Fase 10 · Em breve no menu", "Nova partida: Arena, Estudioso, Veterano e as 6 disciplinas sem banco aparecem apagadas com \"em breve\" e não dão para tocar. Biologia e Química abrem só no Calouro."],
+    ["Fase 10 · Partida completa", "5 rodadas no Calouro: nenhuma pergunta repete na partida (os testes automáticos acima jogam 100 cartas sozinhos com os bancos reais e conferem)."],
+    ["Fase 10 · Relatório", "Jogue algumas cartas (acerte, erre, passe, vá ao passe) e volte à tela inicial → Relatório de acertos: os números batem com o que aconteceu. Desfazer uma carta concluída também a tira do relatório."],
+    ["Fase 10 · Copiar dados", "No Relatório, Copiar dados mostra \"Dados copiados\"; cole num bloco de notas para conferir. No celular, se não copiar, aparece o texto para selecionar; Baixar .txt também serve."],
+    ["Fase 10 · Partidas de teste", "Tire do relatório as partidas que você jogou para testar, antes do piloto com a turma."],
+    ["Fase 7 · Só teclado", "Sem mouse: Tab percorre os botões com o foco amarelo/branco visível; no tabuleiro as setas andam pelas cartas e Enter abre; V abre e fecha o painel Visual (Esc fecha); M som; L ler de novo; A–D, P, T, espaço e Ctrl+Z como antes."],
+    ["Fase 9 · Instalar no PC do projetor", "Chrome ou Edge: abra o endereço do jogo → Instalar o app (tela inicial) ou o ícone Instalar app na barra de endereço. O jogo abre em janela própria, com o ícone Duelo."],
+    ["Fase 9 · Instalar no tablet", "Android: Chrome → Instalar o app (ou menu ⋮ → Instalar app). iPad: Safari → Compartilhar → Adicionar à Tela de Início. O ícone Duelo aparece na tela inicial."],
+    ["Fase 9 · Instalar no celular", "Mesmo caminho do tablet. Confira em pé (tabuleiro em colunas de 4, placar recolhível embaixo) e deitado (cartas e placar lado a lado, sem rolar)."],
+    ["Fase 9 · Sem internet", "Abra o jogo uma vez com internet (aparece \"Pronto: o jogo já funciona sem internet\"). Depois ligue o modo avião, abra pelo ícone e jogue uma partida de Biologia e outra de Química: tudo abre, com fontes, sons e voz do aparelho."],
+    ["Fase 9 · Tela cheia", "Botão ao lado do Visual ou tecla F: entra e sai da tela cheia (no projetor, o botão fica discreto até o mouse chegar perto). No iPhone o botão não aparece: lá, instalado, o jogo já abre sem a barra do Safari."],
+    ["Fase 9 · Endereço antigo", "Abra .../duelo-de-saberes/motor/ : vai sozinho para a raiz. Turmas, partida salva e relatório continuam lá."],
+    ["Fase 9 · Atualização", "Depois de uma publicação nova, abra o jogo com internet: na tela inicial aparece \"Há uma versão nova do jogo\" com Atualizar agora. Durante a partida o aviso espera."]
+  ];
+  var CH = "duelo-motor-testes-v1", marcados = {};
+  try { marcados = JSON.parse(localStorage.getItem(CH) || "{}"); } catch (e) {}
+  function salvar() { try { localStorage.setItem(CH, JSON.stringify(marcados)); } catch (e) {} }
+  var caixa = document.getElementById("manual");
+  caixa.innerHTML = ITENS.map(function (it, i) {
+    return '<label><input type="checkbox" data-i="' + i + '"' + (marcados[i] ? " checked" : "") + '><span><strong>' + (i + 1) + '. ' + esc(it[0]) + '</strong><span>' + esc(it[1]) + '</span></span></label>';
+  }).join("");
+  caixa.addEventListener("change", function (ev) { var i = ev.target.dataset.i; if (i !== undefined) { marcados[i] = ev.target.checked; salvar(); } });
+  document.getElementById("limpar").addEventListener("click", function () {
+    marcados = {}; salvar();
+    caixa.querySelectorAll("input").forEach(function (c) { c.checked = false; });
+  });
+})();
+</script>
+</body>
+</html>

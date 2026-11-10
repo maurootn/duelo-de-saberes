@@ -443,6 +443,7 @@
           '<button class="botao botao-contorno" data-acao="ir-relatorio">Relatório de acertos</button>' +
           '<a class="botao botao-contorno" href="testes.html">Lista de testes</a>' +
           '<a class="botao botao-contorno" href="avatares.html">Galeria de avatares</a>' +
+          (window.PWA ? PWA.botaoInicio() : '') +
         '</div>' +
       '</div>' +
       '<footer class="inicio-rodape">Fase 10 · piloto em sala · Biologia e Química, 1º ano (Calouro) · Prof. Mauro Vinícius, Tanque Novo-BA</footer>' +
@@ -2000,9 +2001,38 @@
         (dep ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M12 3v3M7.5 8.5A6 6 0 0 1 16.5 8.5L18 11v5a6 6 0 0 1-12 0v-5ZM3 12h3M18 12h3M3.5 18H6M18 18h2.5M12 11v9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Depuração</span>'
              : '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="8" cy="10" r="1.5"/><circle cx="12" cy="7.5" r="1.5"/><circle cx="16" cy="10" r="1.5"/></svg><span>Visual</span>') +
       '</button>' +
+      botaoTelaCheia() +
       (ui.painelAberto ? '<div class="pv-caixa' + (dep ? " pv-larga" : "") + '" id="pv-caixa" role="dialog" aria-label="Painel">' +
         '<p class="pv-titulo">' + (dep ? "Depuração" : "Visual") + '<button class="pv-fechar" data-acao="painel" aria-label="Fechar">×</button></p>' + corpo + '</div>' : '');
   }
+
+  /* tela cheia: botão redondo ao lado do Visual (some onde o aparelho não permite, como no iPhone) */
+  function botaoTelaCheia() {
+    if (!window.PWA || !PWA.telaCheiaSuportada) return "";
+    var on = PWA.emTelaCheia();
+    return '<button class="pv-botao pv-tela-cheia" data-acao="tela-cheia" aria-pressed="' + on + '" aria-label="' + (on ? "Sair da tela cheia" : "Tela cheia") + ' (tecla F)" title="' + (on ? "Sair da tela cheia" : "Tela cheia") + ' (F)">' +
+      (on ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+          : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>') +
+    '</button>';
+  }
+  /* o app instalável (js/pwa.js) avisa quando muda: botão de instalar, tela cheia */
+  document.addEventListener("pwa-mudou", function () {
+    /* troca só o botão de instalar (redesenhar a tela inteira repetiria a animação de entrada) */
+    var acoes = tela === "inicio" ? app.querySelector(".inicio-acoes") : null;
+    if (acoes) {
+      var velho = acoes.querySelector(".botao-instalar"), novo = PWA.botaoInicio();
+      var acaoNova = (/data-acao="([^"]+)"/.exec(novo) || [])[1] || "";
+      if ((velho ? velho.dataset.acao : "") !== acaoNova) {
+        var tinhaFoco = velho && velho === document.activeElement;
+        if (velho) velho.remove();
+        if (novo) {
+          acoes.insertAdjacentHTML("beforeend", novo);
+          if (tinhaFoco) acoes.lastElementChild.focus({ preventScroll: true });
+        }
+      }
+    }
+    desenharPainel();
+  });
 
   function painelDepuracao() {
     var e = E(), f = e.fase, j = e.jogada;
@@ -2154,6 +2184,9 @@
       case "proxima-morte": motor.proximaMorte(); depois(); break;
 
       case "painel": abrirPainel(!ui.painelAberto); break;
+      case "tela-cheia": if (window.PWA) PWA.alternarTelaCheia(); break;
+      case "instalar": if (window.PWA) PWA.instalar(); break;
+      case "como-instalar": if (window.PWA) PWA.comoInstalar(); break;
       case "visual":
         visual[b.dataset.campo] = v; salvar();
         /* trocar o tema muda o desenho da tela; modo, fonte e som só trocam variáveis */
@@ -2257,8 +2290,11 @@
   /* teclado: A–D ou 1–4 respondem (também as letras ocultas), espaço pausa, P passa, T usa a Tesoura, Ctrl+Z desfaz */
   document.addEventListener("keydown", function (ev) {
     if (ev.key === "Escape" && tela === "config" && ui.criador !== null) { ev.preventDefault(); fecharCriador(); return; }
+    if (window.PWA && PWA.janelaAberta()) return;
     if (ev.target.matches("input, textarea, select")) return;
     if (ev.key === "Escape" && ui.painelAberto) { abrirPainel(false); return; }
+    /* F liga e desliga a tela cheia, em qualquer tela */
+    if (ev.key.toLowerCase() === "f" && !ev.ctrlKey && !ev.metaKey && !ev.altKey && !ev.repeat && !(tela === "config" && ui.criador !== null) && window.PWA) { ev.preventDefault(); PWA.alternarTelaCheia(); return; }
     /* V abre e fecha o painel com o visual e a acessibilidade, em qualquer tela */
     if (ev.key.toLowerCase() === "v" && !ev.ctrlKey && !ev.metaKey && !ev.altKey && !(tela === "config" && ui.criador !== null)) { ev.preventDefault(); abrirPainel(!ui.painelAberto); return; }
     if (!motor || tela !== "jogo") return;
