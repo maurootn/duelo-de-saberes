@@ -8,10 +8,10 @@
   var D = window.DADOS, LOGO = window.LOGO;
   var app = document.getElementById("app");
   var painel = document.getElementById("painel-visual");
-  var CHAVE = "duelo-prototipo-v1";
+  var CHAVE = "duelo-prototipo-v2";
 
   /* ---------- estado ---------- */
-  var visual = { logo: "a", fontes: "1", tema: "palco", modo: "claro", painelAberto: false };
+  var visual = { tema: "palco", modo: "escuro", painelAberto: false };
   var config = {
     modoJogo: "sala", disciplina: "biologia", nivel: "calouro", temaArena: D.temasArena[0],
     rodadas: 3, nEquipes: 4,
@@ -68,7 +68,6 @@
     var emJogo = tela === "tabuleiro" || tela === "pergunta" || tela === "placar";
     b.dataset.tema = emJogo ? visual.tema : "palco";
     b.dataset.modo = visual.modo;
-    b.dataset.fontes = visual.fontes;
     b.dataset.tela = tela;
   }
 
@@ -93,10 +92,10 @@
   function telaInicio() {
     return '' +
     '<main class="tela inicio">' +
-      '<div class="holofotes" aria-hidden="true"><i></i><i></i><i></i></div>' +
+      '<div class="cenario" aria-hidden="true"><div class="holofotes"><i></i><i></i><i></i><i></i></div><div class="sanefa"></div><div class="cortina esq"></div><div class="cortina dir"></div><div class="piso"></div><div class="ribalta"></div></div>' +
       '<div class="inicio-centro">' +
-        LOGO.completo(visual.logo, "logo-grande") +
-        '<p class="inicio-frase">Perguntas valendo de 100 a 500, cartas viradas e uma equipe de olho na outra.</p>' +
+        LOGO.completo("logo-grande") +
+        '<p class="inicio-frase">Vinte cartas viradas, perguntas de 100 a 500 e uma equipe de olho na outra.</p>' +
         '<div class="inicio-acoes">' +
           '<button class="botao botao-principal botao-enorme" data-acao="ir-config" data-foco>Nova partida</button>' +
           '<button class="botao botao-contorno" data-acao="jogo-rapido">Abrir o tabuleiro de exemplo</button>' +
@@ -111,7 +110,7 @@
     var h = '<main class="tela config">' +
       '<header class="barra">' +
         '<button class="botao botao-contorno botao-pequeno" data-acao="ir-inicio">Voltar</button>' +
-        LOGO.completo(visual.logo, "logo-barra") +
+        LOGO.completo("logo-barra") +
         '<span class="barra-titulo">Nova partida</span>' +
       '</header>' +
       '<div class="config-grade">' +
@@ -234,7 +233,7 @@
     var restam = partida.cartas.filter(function (c) { return !c.usada; }).length;
     return '<main class="tela tabuleiro">' +
       '<header class="barra barra-jogo">' +
-        LOGO.completo(visual.logo, "logo-barra") +
+        LOGO.completo("logo-barra") +
         '<div class="barra-info"><strong>Rodada ' + partida.rodada + ' de ' + config.rodadas + '</strong><span>' + esc(nomeTema()) + '</span></div>' +
         '<div class="barra-acoes">' +
           '<button class="botao botao-contorno botao-pequeno" data-acao="sortear"' + (restam ? "" : " disabled") + '>Sortear carta</button>' +
@@ -307,7 +306,7 @@
       '</header>' +
 
       '<section class="pergunta-corpo">' +
-        '<h1 class="enunciado">' + esc(q.enunciado) + '</h1>' +
+        '<div class="telao"><h1 class="enunciado">' + esc(q.enunciado) + '</h1></div>' +
         '<div class="alternativas">' + pergunta.ordem.map(function (orig, pos) {
           var classe = "alternativa";
           if (r) {
@@ -416,8 +415,8 @@
     eqs.sort(function (a, b) { return b.p - a.p; });
     var topo = Math.max(1, Math.abs(eqs[0].p), Math.abs(eqs[eqs.length - 1].p));
     return '<main class="tela final">' +
-      '<div class="holofotes" aria-hidden="true"><i></i><i></i><i></i></div>' +
-      '<header class="final-topo">' + LOGO.completo(visual.logo, "logo-barra") + '<h1>Placar da partida</h1><p>' + esc(nomeTema()) + '</p></header>' +
+      '<div class="cenario" aria-hidden="true"><div class="holofotes"><i></i><i></i><i></i><i></i></div><div class="sanefa"></div><div class="cortina esq"></div><div class="cortina dir"></div><div class="piso"></div><div class="ribalta"></div></div>' +
+      '<header class="final-topo">' + LOGO.completo("logo-barra") + '<h1>Placar da partida</h1><p>' + esc(nomeTema()) + '</p></header>' +
       '<ol class="final-lista">' + eqs.map(function (x, i) {
         var empatado = i > 0 && eqs[i - 1].p === x.p;
         return '<li class="final-item' + (i === 0 ? " primeiro" : "") + '" style="--cor-equipe:' + corHex(x.e.cor) + ';--largura:' + Math.max(4, Math.round(Math.max(0, x.p) / topo * 100)) + '%">' +
@@ -448,10 +447,8 @@
       (visual.painelAberto ?
         '<div class="pv-caixa" id="pv-caixa" role="dialog" aria-label="Testar visual">' +
           '<p class="pv-titulo">Testar visual<button class="pv-fechar" data-acao="painel" aria-label="Fechar">×</button></p>' +
-          grupo("Logo", "logo", [["a", "A · Cartas em choque"], ["b", "B · Balões em duelo"], ["c", "C · Medalhão"]]) +
-          grupo("Fontes", "fontes", [["1", "1 · Bungee + Atkinson"], ["2", "2 · Lilita + Lexend"], ["3", "3 · Bricolage + Figtree"]]) +
           grupo("Tema do tabuleiro", "tema", [["palco", "Palco (neutro)"], ["biologia", "Biologia (prévia)"]]) +
-          grupo("Modo", "modo", [["claro", "Claro"], ["escuro", "Escuro"]]) +
+          grupo("Modo", "modo", [["escuro", "Palco escuro (padrão)"], ["claro", "Sala clara"]]) +
           '<p class="pv-nota">O tema vale no tabuleiro, na pergunta e no placar. A tela inicial e a configuração ficam sempre no palco.</p>' +
         '</div>' : '');
   }
@@ -485,11 +482,7 @@
       case "voltar-tabuleiro": voltarAoTabuleiro(); break;
       case "painel": visual.painelAberto = !visual.painelAberto; desenharPainel(); break;
       case "visual":
-        visual[b.dataset.campo] = v; salvar(); aplicarVisual();
-        if (b.dataset.campo === "logo") {
-          i = pergunta && !pergunta.resultado;
-          if (!i) desenhar(); else desenharPainel();
-        } else desenharPainel();
+        visual[b.dataset.campo] = v; salvar(); aplicarVisual(); desenharPainel();
         break;
     }
   });
