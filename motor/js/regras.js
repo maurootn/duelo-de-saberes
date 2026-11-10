@@ -86,7 +86,7 @@
 
   /* ================================================================
      Criação da partida
-     cfg: { rodadas, nivel, equipes:[{nome,cor,forma}], tempoExtraLeitura,
+     cfg: { rodadas, nivel, equipes:[{nome,cor,forma,avatar,grito}], tempoExtraLeitura,
             chancesTesoura:[50,35,15], chancesPunicao:{id:chance}, recentes:[ids] }
      banco: lista de questões no formato do plano
      ================================================================ */
@@ -100,7 +100,8 @@
       rodadas: cfg.rodadas || 1,
       nivel: cfg.nivel || "calouro",
       tempoExtraLeitura: cfg.tempoExtraLeitura || 0,
-      equipes: cfg.equipes.map(function (e) { return { nome: e.nome, cor: e.cor, forma: e.forma }; }),
+      /* avatar e grito de guerra vão junto (Fase 6); o motor não usa, só guarda para a interface */
+      equipes: cfg.equipes.map(function (e) { return { nome: e.nome, cor: e.cor, forma: e.forma, avatar: e.avatar ? JSON.parse(JSON.stringify(e.avatar)) : null, grito: e.grito || "" }; }),
       pontos: zeros(n),
       semTurno: zeros(n),       // quantos turnos a equipe ainda vai pular
       tesoura: falsos(n),       // poder guardado

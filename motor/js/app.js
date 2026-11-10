@@ -1,15 +1,20 @@
 /* Duelo de Saberes 2.0 · Interface do motor de regras (Fase 4) com temas visuais e sons (Fase 5)
    As regras ficam em regras.js; aqui só se desenha e se chama o motor.
    Telas: inicio → config → (fase do motor: tabuleiro, pergunta, resultado, passe, roleta,
-   fim-rodada, morte-intro, morte-leva, fim). Visual base da Fase 3. Cada tema fica em js/tema-<disciplina>.js e css/tema-<disciplina>.css; os sons, em js/sons.js. */
+   fim-rodada, morte-intro, morte-leva, fim). Visual base da Fase 3. Cada tema fica em temas/<disciplina>/; os sons, em js/sons.js.
+   Fase 6: avatares em camadas (js/avatares.js), criador na configuração, grito de guerra e turmas salvas. */
 
 (function () {
   "use strict";
 
-  var D = window.DADOS, LOGO = window.LOGO, R = window.REGRAS, SONS = window.SONS, VOZ = window.VOZ, TEMAS = (window.TEMAS = window.TEMAS || {});
+  var D = window.DADOS, AV = window.AVATAR, LOGO = window.LOGO, R = window.REGRAS, SONS = window.SONS, VOZ = window.VOZ, TEMAS = (window.TEMAS = window.TEMAS || {});
   var app = document.getElementById("app");
   var painel = document.getElementById("painel-visual");
   var CHAVE = "duelo-motor-v1";
+  /* turmas salvas: cada turma guarda suas equipes (nome, cor, forma, avatar e grito) para a aula seguinte */
+  var CHAVE_TURMAS = "duelo-turmas-v1";
+  var TURMAS_SUGERIDAS = ["1º B", "1º C", "1º D", "1º TMA", "3º C"];
+  var GRITO_MAX = 40;
   /* lista das disciplinas: quais estão prontas, se têm tema e quais arquivos de questões usam */
   var ARQUIVO_DISCIPLINAS = "disciplinas.json";
   var REDUZIR = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -19,7 +24,7 @@
   var config = {
     modoJogo: "sala", disciplina: "biologia", nivel: "calouro", temaArena: D.temasArena[0],
     rodadas: 2, nEquipes: 4,
-    equipes: D.equipesPadrao.map(function (e) { return { nome: e.nome, cor: e.cor, forma: e.forma }; }),
+    equipes: D.equipesPadrao.map(function (e, i) { return { nome: e.nome, cor: e.cor, forma: e.forma, avatar: AV.padrao(i), grito: "" }; }),
     tempoExtraLeitura: 0, depuracao: true, temaVisual: "disciplina",
     chancesTesoura: R.FATIAS_TESOURA.map(function (f) { return f.chance; }),
     chancesPunicao: chancesPadraoPunicao()
@@ -36,7 +41,10 @@
     revelando: null,      // índice da carta virando
     especial: null,       // { tipo, valor } animação do especial
     giro: null,           // roleta girando
-    telaForcada: null
+    telaForcada: null,
+    criador: null,        // índice da equipe aberta no criador de avatar
+    criadorAba: "personagem", criadorEstado: "parado",
+    turmaMsg: ""
   };
   var relogio = null, timerEspecial = null, animId = 0;
 
@@ -55,7 +63,24 @@
       if (s.recentes) recentes = s.recentes;
       if (s.partida && s.partida.fase && s.partida.fase !== "fim") salvo = s.partida;
     } catch (e) { /* sem armazenamento: segue com o padrão */ }
+    config.equipes = completarEquipes(config.equipes);
   }
+  /* sempre 6 equipes guardadas, cada uma com avatar e grito (configurações antigas não tinham) */
+  function completarEquipes(lista) {
+    lista = Array.isArray(lista) ? lista : [];
+    return D.equipesPadrao.map(function (p, i) {
+      var e = lista[i] || {};
+      return {
+        nome: String(e.nome || p.nome).slice(0, 18), cor: e.cor || p.cor, forma: e.forma || p.forma,
+        avatar: AV.normalizar(e.avatar, i), grito: String(e.grito || "").slice(0, GRITO_MAX)
+      };
+    });
+  }
+  function lerTurmas() {
+    try { var t = JSON.parse(localStorage.getItem(CHAVE_TURMAS) || "[]"); return Array.isArray(t) ? t.filter(function (x) { return x && x.nome; }) : []; }
+    catch (e) { return []; }
+  }
+  function gravarTurmas(lista) { try { localStorage.setItem(CHAVE_TURMAS, JSON.stringify(lista)); return true; } catch (e) { return false; } }
   function salvar() {
     try {
       var p = motor && E().fase !== "fim" ? E() : null;
@@ -127,6 +152,16 @@
     return '<svg class="ficha ' + (classe || "") + '" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
       '<path d="' + f.d + '" fill="' + corHex(eq.cor) + '" stroke="var(--ficha-traco)" stroke-width="1.6" stroke-linejoin="round"/></svg>';
   }
+  /* avatar da equipe com a forma no canto (a forma identifica a equipe mesmo sem distinguir cores) */
+  function avatarDe(eq, i, estado, tam, op) {
+    op = op || {};
+    return '<span class="av-casa ' + (tam || "av-m") + '">' +
+      AV.svg(eq.avatar, { cor: corHex(eq.cor), estado: estado || "parado", indice: i, estatico: op.estatico, rotulo: op.rotulo }) +
+      ficha(eq, "av-selo") + '</span>';
+  }
+  /* estado do avatar no placar: congelado (sem turno), na vez ou parado */
+  function estadoPlacar(i) { var e = E(); return e.semTurno[i] ? "congelado" : i === e.vez ? "navez" : "parado"; }
+  function gritoHtml(eq) { return eq.grito ? '<span class="grito">' + esc(eq.grito) + '</span>' : ''; }
   function pontosTxt(n) { return (n < 0 ? "−" : "") + Math.abs(n); }
   function sinal(n) { return (n > 0 ? "+" : n < 0 ? "−" : "") + Math.abs(n); }
   function nomeTema() {
@@ -191,6 +226,10 @@
   }
 
   function desenhar() {
+    var painelCri = app.querySelector(".criador-painel"), rolagem = painelCri ? painelCri.scrollTop : 0;
+    var abaAntes = painelCri ? ui.criadorAbaDesenhada : null;
+    var focado = document.activeElement && document.activeElement.closest && document.activeElement.closest(".criador [data-acao]");
+    var chaveFoco = focado ? [focado.dataset.acao, focado.dataset.valor || "", focado.dataset.equipe || ""].join("|") : null;
     pararRelogio();
     animId++;
     ui.sorteando = false;
@@ -219,7 +258,19 @@
     if (t === "fim-rodada" && app.querySelector(".final-lista.corrida")) animarFimRodada();
     if (t === "fim" && app.querySelector(".degrau.espera")) animarFinal();
     var foco = app.querySelector("[data-foco]");
-    if (foco) foco.focus({ preventScroll: true });
+    document.body.classList.toggle("criador-aberto", t === "config" && ui.criador !== null);
+    var novoPainel = app.querySelector(".criador-painel");
+    if (novoPainel && abaAntes === ui.criadorAba) novoPainel.scrollTop = rolagem;
+    ui.criadorAbaDesenhada = novoPainel ? ui.criadorAba : null;
+    if (chaveFoco && novoPainel) {
+      var alvo = Array.prototype.filter.call(app.querySelectorAll(".criador [data-acao]"), function (b) { return [b.dataset.acao, b.dataset.valor || "", b.dataset.equipe || ""].join("|") === chaveFoco; })[0];
+      if (alvo) { alvo.focus({ preventScroll: true }); return; }
+    }
+    if (t === "config" && ui.criador !== null && !chaveFoco) {
+      var primeiro = app.querySelector(".criador [data-foco]") || app.querySelector(".criador .criador-aba[aria-selected=true]");
+      if (primeiro) { primeiro.focus({ preventScroll: true }); return; }
+    }
+    if (foco && !(t === "config" && ui.criador !== null)) foco.focus({ preventScroll: true });
   }
 
   /* ---------- voz que lê as perguntas ---------- */
@@ -284,9 +335,10 @@
           (salvo && carregado ? '<button class="botao botao-principal botao-enorme" data-acao="continuar-salva" data-foco>Continuar partida</button>' : '') +
           '<button class="botao ' + (salvo && carregado ? 'botao-contorno' : 'botao-principal botao-enorme') + '" data-acao="ir-config"' + (salvo && carregado ? '' : ' data-foco') + '>Nova partida</button>' +
           '<a class="botao botao-contorno" href="testes.html">Lista de testes</a>' +
+          '<a class="botao botao-contorno" href="avatares.html">Galeria de avatares</a>' +
         '</div>' +
       '</div>' +
-      '<footer class="inicio-rodape">Fase 5 · tema de Biologia e sons · 20 questões de teste · Prof. Mauro Vinícius, Tanque Novo-BA</footer>' +
+      '<footer class="inicio-rodape">Fase 6 · avatares e equipes · 20 questões de teste · Prof. Mauro Vinícius, Tanque Novo-BA</footer>' +
     '</main>';
   }
 
@@ -344,13 +396,16 @@
 
     h += '<section class="bloco bloco-largo">' +
         '<div class="bloco-topo"><h2>Equipes</h2>' +
+          '<button class="botao botao-contorno botao-pequeno" data-acao="sortear-avatares" title="Sorteia personagem, expressão, acessório e tom de todas as equipes">Sortear avatares</button>' +
           '<div class="contador contador-compacto" role="group" aria-label="Número de equipes">' +
             '<button class="botao-redondo" data-acao="n-equipes" data-valor="-1" aria-label="Menos uma equipe"' + (config.nEquipes <= 2 ? " disabled" : "") + '>−</button>' +
             '<output class="contador-valor">' + config.nEquipes + '</output>' +
             '<button class="botao-redondo" data-acao="n-equipes" data-valor="1" aria-label="Mais uma equipe"' + (config.nEquipes >= 6 ? " disabled" : "") + '>+</button>' +
           '</div>' +
         '</div>' +
+        blocoTurmas() +
         '<div class="equipes-grade">' + equipesConfig().map(cartaoEquipe).join("") + '</div>' +
+        '<p class="nota">Toque no avatar para abrir o criador: personagem, expressão, acessório, cor, traço e grito de guerra.</p>' +
       '</section>' +
 
       '<section class="bloco bloco-largo">' +
@@ -405,6 +460,7 @@
         '<button class="botao botao-principal botao-enorme" data-acao="comecar"' + (bancoAtual().length ? '' : ' disabled') + '>' + (!carregado ? 'Carregando questões…' : bancoAtual().length ? 'Começar partida' : 'Sem questões') + '</button>' +
       '</div>' +
     '</main>';
+    if (ui.criador !== null) h += telaCriador();
     return h;
   }
   function somar(a) { return a.reduce(function (s, x) { return s + (Number(x) || 0); }, 0); }
@@ -449,10 +505,13 @@
   function cartaoEquipe(eq, i) {
     var usadasCor = equipesConfig().map(function (e) { return e.cor; });
     return '<div class="equipe-cartao" style="--cor-equipe:' + corHex(eq.cor) + '">' +
-      '<div class="equipe-topo">' + ficha(eq, "ficha-grande") +
+      '<div class="equipe-topo">' +
+        '<button class="av-botao" data-acao="abrir-criador" data-equipe="' + i + '" aria-label="Personalizar o avatar da equipe ' + (i + 1) + ': ' + esc(AV.descrever(eq.avatar, i)) + '" title="Personalizar o avatar">' + avatarDe(eq, i, "parado", "av-m") + '</button>' +
         '<label class="campo"><span class="so-leitor">Nome da equipe ' + (i + 1) + '</span>' +
         '<input type="text" maxlength="18" value="' + esc(eq.nome) + '" data-equipe="' + i + '" autocomplete="off" spellcheck="false"></label>' +
       '</div>' +
+      '<div class="equipe-acoes"><button class="botao botao-contorno botao-pequeno" data-acao="abrir-criador" data-equipe="' + i + '">Personalizar</button>' +
+        (eq.grito ? '<span class="equipe-grito-mini">“' + esc(eq.grito) + '”</span>' : '') + '</div>' +
       '<div class="seletor" role="radiogroup" aria-label="Cor da equipe ' + (i + 1) + '">' +
         D.cores.map(function (c) {
           var on = eq.cor === c.id, ocupada = !on && usadasCor.indexOf(c.id) >= 0;
@@ -468,6 +527,148 @@
         }).join("") +
       '</div>' +
     '</div>';
+  }
+
+  /* ---------- turmas salvas ---------- */
+  function blocoTurmas() {
+    var turmas = lerTurmas();
+    return '<div class="turmas" role="group" aria-label="Turmas salvas">' +
+      '<label>Turma salva <select data-turma-escolha aria-label="Turma salva">' +
+        (turmas.length ? turmas.map(function (t) { return '<option value="' + esc(t.nome) + '"' + (t.nome === ui.turmaEscolhida ? ' selected' : '') + '>' + esc(t.nome) + ' · ' + t.nEquipes + ' equipes</option>'; }).join("") : '<option value="">nenhuma ainda</option>') +
+      '</select></label>' +
+      '<button class="botao botao-contorno botao-pequeno" data-acao="turma-carregar"' + (turmas.length ? '' : ' disabled') + '>Usar</button>' +
+      '<button class="botao botao-contorno botao-pequeno" data-acao="turma-excluir"' + (turmas.length ? '' : ' disabled') + '>Excluir</button>' +
+      '<label>Salvar as equipes como <input type="text" maxlength="20" list="turmas-sugeridas" data-turma-nome value="' + esc(ui.turmaNome || "") + '" placeholder="ex.: 1º B" autocomplete="off"></label>' +
+      '<datalist id="turmas-sugeridas">' + TURMAS_SUGERIDAS.map(function (t) { return '<option value="' + esc(t) + '">'; }).join("") + '</datalist>' +
+      '<button class="botao botao-principal botao-pequeno" data-acao="turma-salvar">Salvar turma</button>' +
+      (ui.turmaMsg ? '<p class="turmas-msg" role="status">' + esc(ui.turmaMsg) + '</p>' : '') +
+    '</div>';
+  }
+  function salvarTurma() {
+    var nome = String(ui.turmaNome || "").trim().slice(0, 20);
+    if (!nome) { ui.turmaMsg = "Escreva o nome da turma (por exemplo, 1º B) para salvar."; return; }
+    var lista = lerTurmas().filter(function (t) { return t.nome !== nome; }), existia = lerTurmas().length !== lista.length;
+    lista.push({ nome: nome, nEquipes: config.nEquipes, equipes: JSON.parse(JSON.stringify(equipesConfig())), salvaEm: new Date().toISOString().slice(0, 10) });
+    lista.sort(function (x, y) { return x.nome.localeCompare(y.nome, "pt-BR", { numeric: true }); });
+    ui.turmaMsg = gravarTurmas(lista) ? (existia ? "Turma " + nome + " atualizada com as " + config.nEquipes + " equipes atuais." : "Turma " + nome + " salva com " + config.nEquipes + " equipes.") : "Não deu para salvar neste aparelho (armazenamento bloqueado).";
+    ui.turmaEscolhida = nome;
+  }
+  function usarTurma() {
+    var nome = ui.turmaEscolhida || (lerTurmas()[0] || {}).nome, t = lerTurmas().filter(function (x) { return x.nome === nome; })[0];
+    if (!t) return;
+    var equipes = config.equipes.slice();
+    (t.equipes || []).forEach(function (e, i) { if (i < equipes.length) equipes[i] = e; });
+    config.equipes = completarEquipes(equipes);
+    config.nEquipes = Math.min(6, Math.max(2, Number(t.nEquipes) || 2));
+    corrigirCores();
+    ui.turmaNome = t.nome;
+    ui.turmaMsg = "Equipes da turma " + t.nome + " carregadas.";
+  }
+  function excluirTurma() {
+    var nome = ui.turmaEscolhida || (lerTurmas()[0] || {}).nome;
+    if (!nome || !window.confirm("Excluir a turma " + nome + " salva neste aparelho?")) return;
+    gravarTurmas(lerTurmas().filter(function (t) { return t.nome !== nome; }));
+    ui.turmaEscolhida = null;
+    ui.turmaMsg = "Turma " + nome + " excluída.";
+  }
+
+  /* ---------- criador de avatar em camadas ---------- */
+  var ABAS_CRIADOR = [
+    ["personagem", "Personagem"], ["expressao", "Expressão"], ["acessorio", "Acessório"], ["cor", "Cor e traço"], ["grito", "Grito de guerra"]
+  ];
+  function opcaoAvatar(acao, valor, ativo, titulo, sub, av, i, eq) {
+    return '<button class="av-opcao' + (ativo ? " ativa" : "") + '" role="radio" aria-checked="' + ativo + '" data-acao="' + acao + '" data-valor="' + valor + '">' +
+      (av ? AV.svg(av, { cor: corHex(eq.cor), estatico: true, indice: i }) : '<span class="av-opcao-vazia">–</span>') +
+      esc(titulo) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</button>';
+  }
+  function painelCriador(eq, i) {
+    var a = AV.normalizar(eq.avatar, i), aba = ui.criadorAba, h = "";
+    function com(mud) { var b = {}; Object.keys(a).forEach(function (k) { b[k] = a[k]; }); Object.keys(mud).forEach(function (k) { b[k] = mud[k]; }); return b; }
+    if (aba === "personagem") {
+      var todos = AV.personagens;
+      h += '<h3>Das disciplinas</h3><div class="av-grade" role="radiogroup" aria-label="Personagem das disciplinas">' +
+        todos.filter(function (p) { return p.disciplina; }).map(function (p) { return opcaoAvatar("av-base", p.id, a.base === p.id, p.nome, AV.NOMES_DISCIPLINA[p.disciplina], com({ base: p.id, acess: "nenhum" }), i, eq); }).join("") + '</div>' +
+        '<h3>Genéricos</h3><div class="av-grade" role="radiogroup" aria-label="Personagem genérico">' +
+        todos.filter(function (p) { return !p.disciplina; }).map(function (p) { return opcaoAvatar("av-base", p.id, a.base === p.id, p.nome, "", com({ base: p.id, acess: "nenhum" }), i, eq); }).join("") + '</div>' +
+        '<p class="nota">Qualquer equipe pode usar qualquer personagem, seja qual for a disciplina da partida.</p>';
+    } else if (aba === "expressao") {
+      h += '<h3>Expressão do dia a dia</h3><div class="av-grade" role="radiogroup" aria-label="Expressão">' +
+        AV.EXPRESSOES.map(function (x) { return opcaoAvatar("av-expr", x.id, a.expr === x.id, x.nome, "", com({ expr: x.id }), i, eq); }).join("") + '</div>' +
+        '<p class="nota">Ao acertar, errar ou congelar, o rosto muda sozinho para combinar com o momento.</p>';
+    } else if (aba === "acessorio") {
+      h += '<h3>Acessório</h3><div class="av-grade" role="radiogroup" aria-label="Acessório">' +
+        AV.ACESSORIOS.map(function (x) { return opcaoAvatar("av-acess", x.id, a.acess === x.id, x.nome, "", com({ acess: x.id }), i, eq); }).join("") + '</div>';
+    } else if (aba === "cor") {
+      var usadasCor = equipesConfig().map(function (e) { return e.cor; });
+      h += '<h3>Cor da equipe</h3><div class="seletor" role="radiogroup" aria-label="Cor da equipe">' +
+        D.cores.map(function (c) {
+          var on = eq.cor === c.id, ocupada = !on && usadasCor.indexOf(c.id) >= 0;
+          return '<button class="amostra' + (on ? " ativa" : "") + '" role="radio" aria-checked="' + on + '" aria-label="' + c.nome + (ocupada ? " (em uso por outra equipe)" : "") + '" title="' + c.nome + '" style="--amostra:' + c.hex + '" data-acao="cor" data-equipe="' + i + '" data-valor="' + c.id + '"' + (ocupada ? " disabled" : "") + '></button>';
+        }).join("") + '</div>' +
+        '<h3>Tom do personagem</h3><div class="tons" role="radiogroup" aria-label="Tom do personagem">' +
+        AV.TONS.map(function (t) {
+          var on = a.tom === t.id;
+          return '<button class="tom-botao' + (on ? " ativa" : "") + '" role="radio" aria-checked="' + on + '" data-acao="av-tom" data-valor="' + t.id + '"><i style="--amostra:' + AV.tonalizar(corHex(eq.cor), t.id) + '"></i>' + esc(t.nome) + '</button>';
+        }).join("") + '</div>' +
+        '<h3>Forma da equipe</h3><div class="seletor" role="radiogroup" aria-label="Forma da equipe">' +
+        D.formas.map(function (f) {
+          var on = eq.forma === f.id;
+          return '<button class="forma-botao' + (on ? " ativa" : "") + '" role="radio" aria-checked="' + on + '" aria-label="' + f.nome + '" title="' + f.nome + '" data-acao="forma" data-equipe="' + i + '" data-valor="' + f.id + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + f.d + '"/></svg></button>';
+        }).join("") + '</div>' +
+        '<p class="nota">A forma aparece no canto do avatar e identifica a equipe mesmo para quem não distingue cores.</p>' +
+        '<h3>Traço do desenho</h3><div class="estilos" role="radiogroup" aria-label="Traço do desenho">' +
+        AV.ESTILOS.map(function (x) {
+          var on = a.estilo === x.id;
+          return '<button class="estilo-botao' + (on ? " ativa" : "") + '" role="radio" aria-checked="' + on + '" data-acao="av-estilo" data-valor="' + x.id + '">' +
+            AV.svg(com({ estilo: x.id }), { cor: corHex(eq.cor), estatico: true, indice: i }) + '<span><strong>' + esc(x.nome) + '</strong>' + esc(x.texto) + '</span></button>';
+        }).join("") + '</div>';
+    } else {
+      h += '<h3>Grito de guerra (opcional)</h3>' +
+        '<label class="criador-campo"><span class="so-leitor">Grito de guerra da equipe</span><input type="text" maxlength="' + GRITO_MAX + '" data-grito="' + i + '" value="' + esc(eq.grito) + '" placeholder="Escreva o grito da equipe" autocomplete="off" data-foco></label>' +
+        '<p class="nota">Até ' + GRITO_MAX + ' caracteres. Aparece num balão quando a equipe acerta e embaixo do nome no pódio final.</p>';
+    }
+    return h;
+  }
+  function telaCriador() {
+    var i = ui.criador, eq = config.equipes[i], est = ui.criadorEstado;
+    return '<div class="criador-fundo" data-acao-fundo="fechar-criador">' +
+      '<div class="criador" role="dialog" aria-modal="true" aria-labelledby="criador-titulo" style="--cor-equipe:' + corHex(eq.cor) + '">' +
+        '<header class="criador-topo">' +
+          '<h2 id="criador-titulo">Avatar da equipe ' + (i + 1) + '<small>Monte em camadas: personagem, expressão, acessório, cor e traço</small></h2>' +
+          '<button class="botao botao-principal botao-pequeno" data-acao="fechar-criador">Pronto</button>' +
+        '</header>' +
+        '<div class="criador-corpo">' +
+          '<section class="criador-palco" aria-label="Prévia do avatar">' +
+            '<div class="criador-heroi">' + avatarDe(eq, i, est, "av-gg", { rotulo: AV.descrever(eq.avatar, i) }) + (eq.grito && est === "comemorando" ? gritoHtml(eq) : '') + '</div>' +
+            '<p class="criador-nome">' + ficha(eq) + esc(eq.nome) + '</p>' +
+            '<p class="criador-desc">' + esc(AV.descrever(eq.avatar, i)) + '</p>' +
+            '<div class="criador-estados" role="radiogroup" aria-label="Ver animação">' +
+              AV.ESTADOS.map(function (x) { var on = est === x.id; return '<button class="chip' + (on ? " ativa" : "") + '" role="radio" aria-checked="' + on + '" data-acao="criador-estado" data-valor="' + x.id + '">' + esc(x.nome) + '</button>'; }).join("") +
+            '</div>' +
+            '<div class="criador-palco-acoes"><button class="botao botao-contorno botao-pequeno" data-acao="av-aleatorio" title="Sorteia personagem, expressão, acessório e tom">Aleatório</button></div>' +
+          '</section>' +
+          '<section class="criador-camadas">' +
+            '<div class="criador-abas" role="tablist" aria-label="Camadas do avatar">' +
+              ABAS_CRIADOR.map(function (x, k) { var on = ui.criadorAba === x[0]; return '<button class="criador-aba" role="tab" aria-selected="' + on + '" data-acao="criador-aba" data-valor="' + x[0] + '"><b>' + (k + 1) + '</b><span>' + x[1] + '</span></button>'; }).join("") +
+            '</div>' +
+            '<div class="criador-painel" role="tabpanel">' + painelCriador(eq, i) + '</div>' +
+          '</section>' +
+        '</div>' +
+        '<footer class="criador-rodape">' +
+          '<span class="nota">Tudo fica salvo neste aparelho. Esc ou Pronto fecha.</span>' +
+          '<span class="equipe-acoes">' +
+            (i > 0 ? '<button class="botao botao-contorno botao-pequeno" data-acao="criador-equipe" data-valor="' + (i - 1) + '">Equipe anterior</button>' : '') +
+            (i < config.nEquipes - 1 ? '<button class="botao botao-contorno botao-pequeno" data-acao="criador-equipe" data-valor="' + (i + 1) + '">Próxima equipe</button>' : '') +
+          '</span>' +
+        '</footer>' +
+      '</div>' +
+    '</div>';
+  }
+  function mudarAvatar(campo, valor) {
+    var i = ui.criador, eq = config.equipes[i], a = AV.normalizar(eq.avatar, i);
+    a[campo] = campo === "tom" ? Number(valor) : valor;
+    eq.avatar = a;
+    salvar();
   }
 
   /* ---------- começo da partida ---------- */
@@ -519,7 +720,7 @@
         '<button class="botao botao-contorno botao-pequeno" data-acao="encerrar">Encerrar</button>') +
       '<section class="mesa" aria-label="Tabuleiro">' +
         (e.avisos.length ? '<div class="avisos" role="status">' + e.avisos.map(function (a) { return '<p>' + ICONE.gelo + esc(a) + '</p>'; }).join("") + '</div>' : '') +
-        '<p class="vez" style="--cor-equipe:' + corHex(daVez.cor) + '">' + ficha(daVez) + '<span>Vez de <strong>' + esc(daVez.nome) + '</strong>: escolham uma carta</span></p>' +
+        '<p class="vez" style="--cor-equipe:' + corHex(daVez.cor) + '">' + avatarDe(daVez, e.vez, "navez", "av-p") + '<span>Vez de <strong>' + esc(daVez.nome) + '</strong>: escolham uma carta</span></p>' +
         (dicas.length ? '<div class="dicas">' + dicas.map(function (d) { return '<p>' + d + '</p>'; }).join("") + '</div>' : '') +
         '<div class="cartas' + (ui.revelando !== null ? " escolhida" : "") + '">' + e.cartas.map(cartaHtml).join("") + '</div>' +
       '</section>' +
@@ -564,7 +765,7 @@
       '<ol class="placar-lista">' + e.equipes.map(function (q, i) {
         var p = e.pontos[i];
         return '<li class="placar-item' + (i === e.vez ? " da-vez" : "") + (e.semTurno[i] ? " congelada" : "") + '" style="--cor-equipe:' + corHex(q.cor) + '">' +
-          '<span class="ficha-casa">' + ficha(q, "ficha-grande") + (e.tesoura[i] ? '<span class="ficha-poder" title="Tesoura guardada">' + ICONE.tesoura + '</span>' : '') + '</span>' +
+          '<span class="ficha-casa">' + avatarDe(q, i, estadoPlacar(i), "av-m") + (e.tesoura[i] ? '<span class="ficha-poder" title="Tesoura guardada">' + ICONE.tesoura + '</span>' : '') + '</span>' +
           '<span class="placar-nome">' + esc(q.nome) + (i === e.vez ? '<em>na vez</em>' : (p === lider && p !== 0 ? '<em>na frente</em>' : '')) + marcasEquipe(i) + '</span>' +
           '<span class="placar-pontos' + (p < 0 ? " negativo" : "") + '">' + pontosTxt(p) + '</span>' +
         '</li>';
@@ -703,7 +904,7 @@
     var revelando = r && j.oculta, n = 0;
     var h = '<main class="tela pergunta' + (r ? " respondida" : "") + (revelando ? " revelando" : "") + (esp ? " com-" + j.especial : "") + '" style="--cor-equipe:' + corHex(eq.cor) + '">' + fundoTema() +
       '<header class="barra barra-jogo">' +
-        '<p class="vez vez-barra">' + ficha(eq) + '<span><strong>' + esc(eq.nome) + '</strong> responde</span></p>' +
+        '<p class="vez vez-barra">' + avatarDe(eq, eqI, r ? estadoVeredito(r, j) : "navez", "av-p") + '<span><strong>' + esc(eq.nome) + '</strong> responde</span></p>' +
         '<div class="selos">' + selo + '</div>' +
         '<div class="valor-selo" aria-label="Valendo ' + (valor === null ? "a morte súbita" : valor + " pontos") + '">' + rotuloValor + '</div>' +
       '</header>' +
@@ -757,7 +958,9 @@
       var botao = modo === "roleta" ? '<button class="botao botao-principal botao-enorme" data-acao="ir-roleta" data-foco>Girar a roleta de punição</button>' :
         segredo ? '<button class="botao botao-principal botao-enorme" data-acao="abrir-passe" data-foco>Ir para o passe</button>' :
         '<button class="botao botao-principal botao-enorme" data-acao="concluir" data-foco>' + (j.etapa === "morte" ? "Continuar" : "Voltar ao tabuleiro") + '</button>';
-      h += '<div class="veredito ' + r.tipo + '" role="status">' +
+      var heroi = r.equipe !== null && r.equipe !== undefined ? eqp(r.equipe) : null;
+      h += '<div class="veredito ' + r.tipo + '" role="status"' + (heroi ? ' style="--cor-equipe:' + corHex(heroi.cor) + '"' : '') + '>' +
+          (heroi ? '<div class="veredito-heroi">' + avatarDe(heroi, r.equipe, estadoVeredito(r, j), "av-g") + (r.tipo === "acerto" ? gritoHtml(heroi) : '') + '</div>' : '') +
           '<span class="veredito-titulo">' + esc(r.titulo) + '</span>' +
           (r.delta ? '<span class="veredito-pontos">' + sinal(r.delta) + '</span>' : '') +
           (r.equipe !== null && r.equipe !== undefined ? '<span class="veredito-equipe">' + ficha(eqp(r.equipe)) + esc(eqp(r.equipe).nome) + '</span>' : '') +
@@ -768,6 +971,13 @@
         '<div class="lado-acoes lado-fim">' + botao + (modo === "roleta" ? '' : botaoDesfazer()) + '</div>';
     }
     return h + '</aside></main>';
+  }
+
+  /* o personagem reage ao resultado: comemora, lamenta ou fica congelado (armadilha Congelou!) */
+  function estadoVeredito(r, j) {
+    if (r.tipo === "acerto") return "comemorando";
+    if (r.tipo === "erro") return j && j.etapa === "principal" && j.especial === "congelou" && E().semTurno[r.equipe] ? "congelado" : "lamentando";
+    return "parado";
   }
 
   /* alternativas ocultas: só as letras, numa ordem nova; o conteúdo aparece depois da escolha */
@@ -791,6 +1001,7 @@
     var e = E(), j = e.jogada, r = j.resultado, eq = eqp(j.equipe);
     return '<main class="tela rumo-passe" style="--cor-equipe:' + corHex(eq.cor) + '">' + cenario() +
       '<div class="rumo-caixa veredito ' + r.tipo + '" role="status">' +
+        avatarDe(eq, j.equipe, r.tipo === "erro" ? "lamentando" : "parado", "av-g") +
         '<p class="vez">' + ficha(eq) + '<span><strong>' + esc(eq.nome) + '</strong></span></p>' +
         '<span class="veredito-titulo">' + esc(r.titulo) + '</span>' +
         (r.delta ? '<span class="veredito-pontos">' + sinal(r.delta) + '</span>' : '') +
@@ -1001,7 +1212,8 @@
       /* tema com tela própria de passe: as equipes que podem receber aparecem no campo de visão */
       var lista = mostrarRoda ? p.elegiveis : (p.equipe !== null ? [p.equipe] : []);
       var foco = escolhido ? lista.indexOf(p.equipe) : -1;
-      if (lista.length) h += t.passe(lista.map(function (i) { var q = eqp(i); return { nome: esc(q.nome), cor: corHex(q.cor), ficha: ficha(q) }; }),
+      /* cada equipe entra no passe do tema com o seu avatar (a forma continua no canto) */
+      if (lista.length) h += t.passe(lista.map(function (i) { var q = eqp(i); return { nome: esc(q.nome), cor: corHex(q.cor), ficha: avatarDe(q, i, escolhido && i === p.equipe ? "navez" : "parado", "ficha av-no-tema") }; }),
         foco >= 0 ? foco : null, escolhido ? "pequeno" : "", "Passe<br>" + j.valor);
       if (mostrarRoda && !p.sorteado) h += '<button class="botao botao-principal botao-enorme" data-acao="sortear-passe" data-foco>Sortear quem recebe</button>';
       if (!mostrarRoda) h += '<p class="passe-direto">' + (e.equipes.length === 2 ? "Com duas equipes, a outra recebe direto." : "Só uma equipe pode receber agora.") + '</p>';
@@ -1015,7 +1227,7 @@
     if (escolhido) {
       var q = eqp(p.equipe);
       h += '<div class="passe-escolhida" style="--cor-equipe:' + corHex(q.cor) + '">' +
-          ficha(q, "ficha-enorme") + '<p><strong>' + esc(q.nome) + '</strong> recebe o passe</p>' +
+          avatarDe(q, p.equipe, "navez", "av-g") + '<p><strong>' + esc(q.nome) + '</strong> recebe o passe</p>' +
         '</div>' +
         '<div class="inicio-acoes">' +
           '<button class="botao botao-principal botao-enorme" data-acao="aceitar-passe" data-foco>Aceitar</button>' +
@@ -1054,7 +1266,7 @@
     return '<main class="tela roleta" style="--cor-equipe:' + corHex(q.cor) + '">' + cenario() +
       '<header class="passe-topo">' +
         '<h1 class="passe-titulo">Roleta de punição</h1>' +
-        '<p class="passe-sub">' + ficha(q) + ' <b>' + esc(q.nome) + '</b> errou no passe · carta de ' + j.valor + '</p>' +
+        '<p class="passe-sub">' + avatarDe(q, j.passe.equipe, "lamentando", "av-p") + ' <b>' + esc(q.nome) + '</b> errou no passe · carta de ' + j.valor + '</p>' +
       '</header>' +
       '<div class="passe-centro">' +
         (g ? rodaParada(fatias, g) : rodaSvg(fatias)) +
@@ -1095,7 +1307,11 @@
     }
     return '<main class="tela final fim-rodada">' + cenario() +
       '<header class="final-topo">' + LOGO.completo("logo-barra") + '<h1>' + (e.encerradaAntes ? "Partida encerrada" : "Fim da rodada " + e.rodada) + '</h1><p>' + esc(nomeTema()) + ' · pódio parcial</p></header>' +
-      listaRanking(animar ? antes : rk, extra, animar) +
+      listaRanking(animar ? antes : rk, extra, animar, false, function (eq) {
+        /* subiu no placar: comemora · caiu: lamenta · líder: comemora */
+        var mov = posAntes[eq] - posFinal[eq];
+        return mov > 0 || (posFinal[eq] === 0 && e.pontos[eq] > 0) ? "comemorando" : mov < 0 ? "lamentando" : "parado";
+      }) +
       (empate ? '<p class="nota nota-centro destaque' + (animar ? " esconde" : "") + '" data-depois>Empate no primeiro lugar: vem a morte súbita!</p>' : '') +
       '<div class="inicio-acoes' + (animar ? " esconde" : "") + '" data-depois>' +
         '<button class="botao botao-principal botao-enorme" data-acao="avancar-rodada"' + (animar ? '' : ' data-foco') + '>' + (!ultima ? "Rodada " + (e.rodada + 1) : empate ? "Morte súbita" : "Pódio final") + '</button>' +
@@ -1105,7 +1321,7 @@
     '</main>';
   }
   /* lista do placar; com animar, começa com o placar do início da rodada (ou zero) e sem posições */
-  function listaRanking(lista, extra, animar, deZero) {
+  function listaRanking(lista, extra, animar, deZero, estadoDe) {
     var e = E(), rk = motor.ranking(), posicao = {};
     rk.forEach(function (x) { posicao[x.equipe] = x.posicao; });
     var topo = Math.max(1, Math.max.apply(null, e.pontos.map(Math.abs)));
@@ -1113,7 +1329,7 @@
       var i = x.equipe, q = eqp(i), p = e.pontos[i], de = deZero ? 0 : e.placarInicioRodada[i];
       var mostrado = animar ? de : p;
       return '<li class="final-item' + (!animar && posicao[i] === 1 ? " primeiro" : "") + '" data-equipe="' + i + '" data-de="' + de + '" data-ate="' + p + '" style="--cor-equipe:' + corHex(q.cor) + ';--largura:' + Math.max(3, Math.round(Math.max(0, mostrado) / topo * 100)) + '%">' +
-        '<span class="final-posicao">' + (animar ? '' : posicao[i] + 'º') + '</span>' + ficha(q, "ficha-grande") +
+        '<span class="final-posicao">' + (animar ? '' : posicao[i] + 'º') + '</span>' + avatarDe(q, i, estadoDe ? estadoDe(i) : "parado", "av-m") +
         '<span class="final-nome">' + esc(q.nome) + '<i class="final-barra"></i>' + (extra ? '<span class="final-extra' + (animar ? " esconde" : "") + '">' + extra(i) + '</span>' : '') + '</span>' +
         '<span class="placar-pontos' + (mostrado < 0 ? " negativo" : "") + '">' + pontosTxt(mostrado) + '</span></li>';
     }).join("") + '</ol>';
@@ -1203,7 +1419,8 @@
         '<p>Leva ' + ms.leva + ' · uma questão de 500 para cada equipe empatada · sem passe e sem especiais · o placar não muda</p></header>' +
       '<ul class="morte-equipes">' + ms.equipes.map(function (i) {
         var q = eqp(i), r = ms.resultados[i];
-        return '<li class="' + (r === true ? "ok" : r === false ? "nao" : ms.fila[0] === i ? "proxima" : "") + '" style="--cor-equipe:' + corHex(q.cor) + '">' + ficha(q, "ficha-grande") +
+        return '<li class="' + (r === true ? "ok" : r === false ? "nao" : ms.fila[0] === i ? "proxima" : "") + '" style="--cor-equipe:' + corHex(q.cor) + '">' +
+          avatarDe(q, i, r === true ? "comemorando" : r === false ? "lamentando" : ms.fila[0] === i ? "navez" : "parado", "av-m") +
           '<span>' + esc(q.nome) + '</span><small>' + (r === true ? "acertou" : r === false ? "errou" : ms.fila[0] === i ? "agora" : "aguarda") + '</small></li>';
       }).join("") + '</ul>' +
       (ms.leva > 1 && e.fase === "morte-leva" && !Object.keys(ms.resultados).length ? '<p class="nota nota-centro destaque">Ninguém se separou na leva anterior: nova leva com ' + ms.equipes.length + ' equipes.</p>' : '') +
@@ -1215,21 +1432,6 @@
   }
 
   /* ---------- pódio final ---------- */
-  function trofeu() {
-    return '<svg class="trofeu" viewBox="0 0 120 130" aria-hidden="true">' +
-      '<defs><linearGradient id="tr-ouro" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF0B8"/><stop offset=".45" stop-color="#F5C451"/><stop offset="1" stop-color="#A6730F"/></linearGradient></defs>' +
-      '<g stroke="#1C070D" stroke-width="3" stroke-linejoin="round">' +
-        '<path d="M30 14h60v22c0 20-13 36-30 36S30 56 30 36Z" fill="url(#tr-ouro)"/>' +
-        '<path d="M30 22H14c0 18 8 27 18 28M90 22h16c0 18-8 27-18 28" fill="none" stroke="#F5C451" stroke-width="6" stroke-linecap="round"/>' +
-        '<path d="M30 22H14c0 18 8 27 18 28M90 22h16c0 18-8 27-18 28" fill="none" stroke-width="2"/>' +
-        '<path d="M53 72h14v16H53Z" fill="url(#tr-ouro)"/>' +
-        '<path d="M38 88h44l6 14H32Z" fill="url(#tr-ouro)"/>' +
-        '<path d="M26 102h68v12H26Z" fill="#4A0615"/>' +
-      '</g>' +
-      '<path d="M60 26l4.5 9.2 10.1 1.4-7.3 7.1 1.7 10-9-4.7-9 4.7 1.7-10-7.3-7.1 10.1-1.4Z" fill="#FFFFFF" opacity=".9"/>' +
-      '<path d="M40 20c0 10 2 20 8 28" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" fill="none" opacity=".55"/>' +
-    '</svg>';
-  }
   function trajetoriaSvg(animar) {
     var e = E(), T = e.trajetoria, n = e.equipes.length;
     if (T.length < 2) return "";
@@ -1302,8 +1504,9 @@
       '<div class="podio">' + ordemPodio.map(function (x) {
         var q = eqp(x.equipe), pos = x === rk[0] ? 1 : x.posicao;
         return '<div class="degrau d' + pos + (animar ? " espera" : " campeao-fixo") + '" data-pos="' + pos + '" data-ordem="' + rk.indexOf(x) + '" data-ate="' + x.pontos + '" style="--cor-equipe:' + corHex(q.cor) + '">' +
-          (x === rk[0] ? trofeu() : '') + ficha(q, "ficha-enorme") +
+          avatarDe(q, x.equipe, x === rk[0] ? "trofeu" : "parado", "av-g") +
           '<strong class="degrau-nome">' + esc(q.nome) + '</strong>' +
+          (q.grito ? '<span class="degrau-grito">“' + esc(q.grito) + '”</span>' : '') +
           '<span class="placar-pontos' + (!animar && x.pontos < 0 ? " negativo" : "") + '">' + (animar ? "0" : pontosTxt(x.pontos)) + '</span>' +
           '<span class="degrau-base"><b>' + pos + 'º</b></span>' +
         '</div>';
@@ -1445,7 +1648,16 @@
   /* ================= eventos ================= */
   function depois() { salvar(); desenhar(); }
 
+  function fecharCriador() {
+    var i = ui.criador;
+    ui.criador = null;
+    desenhar();
+    var b = app.querySelector('.av-botao[data-equipe="' + i + '"]');
+    if (b) b.focus({ preventScroll: true });
+  }
   document.addEventListener("click", function (ev) {
+    /* toque fora da janela do criador fecha */
+    if (ev.target.matches && ev.target.matches("[data-acao-fundo]")) { fecharCriador(); return; }
     var b = ev.target.closest("[data-acao]");
     if (!b || b.disabled) return;
     var a = b.dataset.acao, v = b.dataset.valor;
@@ -1471,6 +1683,21 @@
       case "n-equipes": config.nEquipes = Math.min(6, Math.max(2, config.nEquipes + Number(v))); corrigirCores(); salvar(); desenhar(); break;
       case "cor": config.equipes[Number(b.dataset.equipe)].cor = v; salvar(); desenhar(); break;
       case "forma": config.equipes[Number(b.dataset.equipe)].forma = v; salvar(); desenhar(); break;
+      case "abrir-criador": ui.criador = Number(b.dataset.equipe); ui.criadorEstado = "parado"; ui.criadorFoco = b.dataset.equipe; desenhar(); break;
+      case "fechar-criador": fecharCriador(); break;
+      case "criador-equipe": ui.criador = Number(v); desenhar(); break;
+      case "criador-aba": ui.criadorAba = v; desenhar(); break;
+      case "criador-estado": ui.criadorEstado = v; desenhar(); break;
+      case "av-base": mudarAvatar("base", v); desenhar(); break;
+      case "av-expr": mudarAvatar("expr", v); ui.criadorEstado = "parado"; desenhar(); break;
+      case "av-acess": mudarAvatar("acess", v); desenhar(); break;
+      case "av-tom": mudarAvatar("tom", v); desenhar(); break;
+      case "av-estilo": mudarAvatar("estilo", v); desenhar(); break;
+      case "av-aleatorio": config.equipes[ui.criador].avatar = AV.aleatorio(config.equipes[ui.criador].avatar); salvar(); desenhar(); break;
+      case "sortear-avatares": equipesConfig().forEach(function (e) { e.avatar = AV.aleatorio(e.avatar); }); salvar(); desenhar(); break;
+      case "turma-salvar": salvarTurma(); desenhar(); break;
+      case "turma-carregar": usarTurma(); salvar(); desenhar(); break;
+      case "turma-excluir": excluirTurma(); desenhar(); break;
 
       case "carta": abrirCarta(Number(b.dataset.indice)); break;
       case "sortear": sortearComMarcador(); break;
@@ -1559,6 +1786,7 @@
 
   document.addEventListener("change", function (ev) {
     var t = ev.target;
+    if (t.matches && t.matches("select[data-turma-escolha]")) { ui.turmaEscolhida = t.value; return; }
     if (t.matches && t.matches("select[data-voz-nome]")) { visual.vozNome = t.value; salvar(); aplicarVisual(telaAtual()); return; }
     if (t.dataset.dep === "ver-cartas") { ui.verCartas = t.checked; desenhar(); return; }
     if (t.dataset.dep === "especial") { motor.dep.definirEspecial(Number(t.dataset.indice), t.value || null); depoisDep(); return; }
@@ -1576,6 +1804,12 @@
 
   document.addEventListener("input", function (ev) {
     var t = ev.target;
+    if (t.matches("input[data-turma-nome]")) { ui.turmaNome = t.value; return; }
+    if (t.matches("input[data-grito]")) {
+      config.equipes[Number(t.dataset.grito)].grito = t.value.slice(0, GRITO_MAX).replace(/\s+/g, " ").replace(/^\s/, "");
+      salvar();
+      return;
+    }
     if (t.matches("input[data-equipe]")) {
       config.equipes[Number(t.dataset.equipe)].nome = t.value.trim() || ("Equipe " + (Number(t.dataset.equipe) + 1));
       salvar();
@@ -1593,6 +1827,7 @@
 
   /* teclado: A–D ou 1–4 respondem (também as letras ocultas), espaço pausa, P passa, T usa a Tesoura, Ctrl+Z desfaz */
   document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape" && tela === "config" && ui.criador !== null) { ev.preventDefault(); fecharCriador(); return; }
     if (ev.target.matches("input, textarea, select")) return;
     if (ev.key === "Escape" && ui.painelAberto) { ui.painelAberto = false; desenharPainel(); return; }
     if (!motor || tela !== "jogo") return;

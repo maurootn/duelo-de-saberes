@@ -1,0 +1,252 @@
+/* Duelo de Saberes 2.0 · Avatares (Fase 6): animações dos personagens, criador em camadas e onde o avatar aparece no jogo.
+   Estados: parado · na vez · comemorando · lamentando · congelado · com troféu.
+   Tudo respeita "reduzir animações" do aparelho. */
+
+/* ================= o personagem ================= */
+.avatar { display: block; width: 3rem; height: auto; aspect-ratio: 120 / 124; overflow: visible; flex: none; }
+.avatar .av-mov, .avatar .av-sombra, .avatar .av-halo { transform-box: view-box; transform-origin: 60px 113px; }
+.avatar.av-palco .av-mov { filter: drop-shadow(0 0 .14rem rgba(255, 215, 110, .55)); }
+body[data-modo="claro"] .avatar.av-palco .av-mov { filter: drop-shadow(0 .06rem .1rem rgba(74, 6, 21, .35)); }
+.avatar .av-olho { transform-box: fill-box; transform-origin: 50% 50%; }
+.avatar .av-orbitas { transform-box: view-box; transform-origin: 60px 62px; }
+.avatar .av-raios { transform-box: view-box; transform-origin: 60px 62px; opacity: .24; }
+.avatar .av-borla { transform-box: fill-box; transform-origin: 0 0; }
+.avatar .av-cintila { transform-box: fill-box; transform-origin: 50% 50%; }
+.avatar .av-confete { transform-box: fill-box; transform-origin: 50% 50%; }
+
+/* parado: respira, pisca e os detalhes se mexem de leve */
+.av-parado .av-mov { animation: av-respira 3.4s ease-in-out infinite; }
+.avatar .av-olho { animation: av-pisca 5.2s infinite; }
+.av-b-atomo .av-orbitas { animation: av-gira 14s linear infinite; }
+.av-b-ampulheta .av-areia { animation: av-areia 1s linear infinite; }
+.av-b-robo .av-antena { animation: av-antena 2.4s ease-in-out infinite; }
+.av-b-celula .av-membrana { animation: av-areia 3s linear infinite; }
+.avatar .av-borla { animation: av-balanca 2.8s ease-in-out infinite; }
+@keyframes av-respira { 50% { transform: scale(1.03, .97); } }
+@keyframes av-pisca { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+@keyframes av-gira { to { transform: rotate(360deg); } }
+@keyframes av-areia { to { stroke-dashoffset: -10; } }
+@keyframes av-antena { 50% { opacity: .45; } }
+@keyframes av-balanca { 50% { transform: rotate(7deg); } }
+
+/* na vez: quica com halo dourado pulsando e brilhinhos */
+.av-navez .av-mov { animation: av-quica 1.1s cubic-bezier(.3, .1, .3, 1) infinite; }
+.av-navez .av-halo { animation: av-halo 1.1s ease-in-out infinite; }
+.av-navez .av-sombra { animation: av-sombra 1.1s cubic-bezier(.3, .1, .3, 1) infinite; }
+.av-navez .av-cintila, .av-trofeu .av-cintila, .av-congelado .av-cintila { animation: av-cintila 1.6s ease-in-out infinite; }
+.avatar .av-cintila-2 { animation-delay: -.8s !important; }
+@keyframes av-quica {
+  0%, 100% { transform: translateY(0) scale(1.04, .96); }
+  45% { transform: translateY(-7px) scale(.98, 1.03); }
+  60% { transform: translateY(-7.5px) scale(.98, 1.03); }
+}
+@keyframes av-halo { 50% { opacity: .9; transform: scale(1.12); } }
+@keyframes av-sombra { 50% { transform: scale(.82); opacity: .16; } }
+@keyframes av-cintila { 0%, 100% { transform: scale(.4) rotate(0); opacity: .2; } 50% { transform: scale(1) rotate(45deg); opacity: 1; } }
+
+/* comemorando: pula alto, gira e solta confete */
+.av-comemorando .av-mov { animation: av-pulo .9s cubic-bezier(.3, .1, .3, 1) infinite; }
+.av-comemorando .av-sombra { animation: av-sombra-pulo .9s cubic-bezier(.3, .1, .3, 1) infinite; }
+.av-comemorando .av-confete { animation: av-confete 1.8s ease-out infinite; animation-delay: calc(var(--i) * -.22s); }
+@keyframes av-pulo {
+  0%, 100% { transform: translateY(0) scale(1.1, .9); }
+  30% { transform: translateY(-17px) scale(.94, 1.07) rotate(-6deg); }
+  50% { transform: translateY(-20px) scale(.97, 1.03) rotate(5deg); }
+  78% { transform: translateY(0) scale(1.08, .92); }
+}
+@keyframes av-sombra-pulo { 50% { transform: scale(.6); opacity: .1; } }
+@keyframes av-confete {
+  0% { transform: translateY(8px) scale(.2) rotate(0); opacity: 0; }
+  25% { opacity: 1; }
+  100% { transform: translateY(-14px) scale(1.1) rotate(220deg); opacity: 0; }
+}
+
+/* lamentando: murcha, balança devagar e a lágrima escorre */
+.av-lamentando .av-mov { animation: av-murcha 2.6s ease-in-out infinite; filter: saturate(.7) brightness(.92); }
+.av-lamentando .av-lagrima { animation: av-lagrima 1.8s ease-in infinite; }
+@keyframes av-murcha {
+  0%, 100% { transform: translateY(4px) scale(1.05, .9) rotate(-3deg); }
+  50% { transform: translateY(5px) scale(1.06, .88) rotate(3deg); }
+}
+@keyframes av-lagrima { 0% { transform: translateY(-3px); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(12px); opacity: 0; } }
+
+/* congelado (armadilha): fica azul e parado dentro do gelo, com um tremor de vez em quando */
+.av-congelado .av-mov { filter: grayscale(1) sepia(1) hue-rotate(165deg) saturate(2.6) brightness(1.08); animation: av-tremor 3.2s linear infinite; }
+.av-congelado .av-olho, .av-congelado .av-orbitas, .av-congelado .av-areia, .av-congelado .av-antena, .av-congelado .av-borla { animation: none; }
+@keyframes av-tremor { 0%, 88%, 100% { transform: translateX(0); } 90% { transform: translateX(-1.2px); } 92% { transform: translateX(1.2px); } 94% { transform: translateX(-1px); } 96% { transform: translateX(.8px); } }
+
+/* com troféu (pódio): ergue a taça, raios girando atrás */
+.av-trofeu .av-mov { animation: av-vitoria 1.6s ease-in-out infinite; }
+.av-trofeu .av-raios { animation: av-gira 12s linear infinite; }
+.av-trofeu .av-taca { transform-box: view-box; transform-origin: 60px 21px; animation: av-taca 1.6s ease-in-out infinite; }
+@keyframes av-vitoria { 50% { transform: translateY(-4px) scale(1.02, .99); } }
+@keyframes av-taca { 50% { transform: rotate(-6deg) translateY(-2px); } }
+
+/* miniaturas e quem pede menos estímulo: tudo parado */
+.av-estatico *, .av-estatico { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .avatar, .avatar * { animation: none !important; } }
+
+/* ================= o avatar dentro do jogo ================= */
+/* casa do avatar: o personagem com a forma da equipe no canto, para quem não distingue cores */
+.av-casa { position: relative; display: inline-grid; place-items: center; flex: none; }
+.av-casa .avatar { width: 100%; }
+.av-casa .av-selo { position: absolute; right: -4%; bottom: 4%; width: 28%; height: auto; aspect-ratio: 1; filter: drop-shadow(0 .06rem .1rem rgba(0, 0, 0, .6)); }
+.av-casa .av-selo.ficha { width: 28%; height: auto; min-width: .9rem; }
+.av-p { width: 2.2rem; }
+.av-m { width: 3.4rem; }
+.av-g { width: clamp(4.4rem, 12vmin, 6.6rem); }
+.av-gg { width: clamp(6rem, 18vmin, 9.5rem); }
+
+/* placar: o avatar ocupa o lugar da ficha */
+.placar-item .ficha-casa .av-casa { width: 3.6rem; margin: -.35rem 0 -.2rem -.15rem; }
+.placar-item .ficha-poder { z-index: 1; }
+.placar-item.congelada .av-casa .av-selo path { fill: #6EC6FF; }
+.placar-mini .av-casa { width: 1.5rem; }
+
+/* faixa da vez (tabuleiro) e barra da pergunta */
+.vez .av-casa { width: 2.8rem; margin: -.5rem 0 -.35rem; }
+.vez-barra .av-casa { width: 2.5rem; }
+
+/* veredito: o personagem comemora ou lamenta ao lado do resultado */
+.veredito-heroi { flex: 1 1 100%; width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: .6rem; margin: -.2rem 0 .2rem; }
+.veredito-heroi .av-casa { width: clamp(4.6rem, 13vmin, 7rem); }
+.grito {
+  position: relative; flex: 0 1 auto; min-width: 6.5rem; max-width: 14rem; padding: .45rem .8rem; border-radius: 1rem 1rem 1rem .25rem; margin-bottom: 1.6rem;
+  background: var(--painel-solido); border: .16rem solid var(--cor-equipe, var(--borda-forte)); color: var(--tinta);
+  font-family: var(--fonte-titulo); font-size: .95rem; line-height: 1.15; text-align: left; overflow-wrap: anywhere;
+  box-shadow: var(--sombra); animation: grito-entra .5s cubic-bezier(.2, 1.5, .4, 1) .25s both;
+}
+.grito::before { content: ""; position: absolute; left: -.55rem; bottom: .4rem; border: .32rem solid transparent; border-right-color: var(--cor-equipe, var(--borda-forte)); border-bottom-color: var(--cor-equipe, var(--borda-forte)); }
+@keyframes grito-entra { from { transform: scale(.3) rotate(-8deg); opacity: 0; } }
+.rumo-caixa .av-casa { width: clamp(4.4rem, 12vmin, 6.4rem); margin: 0 auto -.2rem; }
+
+/* passe, roleta e morte súbita · no passe dos temas o avatar ocupa o lugar da ficha */
+.av-casa.av-no-tema.ficha { width: 88% !important; height: auto !important; filter: none; overflow: visible; }
+.av-casa.av-no-tema .avatar .av-mov { filter: drop-shadow(0 0 .12rem #FFFFFF) drop-shadow(0 0 .3rem rgba(255, 255, 255, .7)); }
+.av-casa.av-no-tema .av-selo { width: 34%; }
+.passe-escolhida .av-casa { width: clamp(3.6rem, 10vmin, 5.4rem); margin: -.6rem 0; }
+.passe-sub .av-casa { width: 2.2rem; }
+.morte-equipes .av-casa { width: 3.4rem; }
+
+/* pódio parcial e final */
+.final-item .av-casa { width: 2.9rem; margin: -.4rem 0; }
+.degrau .av-casa { width: clamp(4.6rem, 14vmin, 7.6rem); }
+.degrau.d1 .av-casa { width: clamp(6rem, 19vmin, 10rem); }
+.degrau-grito { font-size: .78rem; font-style: italic; color: var(--tinta-suave); text-align: center; overflow-wrap: anywhere; max-width: 12rem; }
+.degrau.d1 .degrau-grito { font-size: .9rem; color: var(--acento); font-weight: 700; font-style: normal; }
+body[data-modo="claro"] .degrau.d1 .degrau-grito { color: var(--acento-escuro); }
+/* a taça do campeão só aparece quando o 1º lugar é revelado */
+.degrau .av-taca, .degrau .av-raios { transition: opacity .5s; }
+.degrau.espera .av-taca, .degrau.espera .av-raios, .degrau.sobe:not(.campeao) .av-taca, .degrau.sobe:not(.campeao) .av-raios { opacity: 0; }
+
+/* ================= configuração: cartão da equipe ================= */
+.equipe-topo .av-botao { padding: 0; border: 0; background: none; border-radius: .8rem; cursor: pointer; flex: none; }
+.equipe-topo .av-botao .av-casa { width: 3.6rem; }
+.equipe-topo .av-botao:hover .avatar, .equipe-topo .av-botao:focus-visible .avatar { transform: scale(1.08); }
+.equipe-topo .av-botao .avatar { transition: transform .2s; }
+.equipe-acoes { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+.equipe-grito-mini { font-size: .78rem; color: var(--tinta-suave); font-style: italic; overflow-wrap: anywhere; }
+
+/* turmas salvas */
+.turmas { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .8rem; padding: .6rem .7rem; border-radius: .7rem; background: var(--painel); border: .1rem dashed var(--borda); }
+.turmas label { display: flex; align-items: center; gap: .4rem; font-size: .85rem; color: var(--tinta-suave); }
+.turmas select, .turmas input { min-height: 2.4rem; padding: .3rem .55rem; border-radius: .5rem; border: .1rem solid var(--borda); background: var(--painel-solido); color: var(--tinta); font: inherit; font-weight: 700; }
+.turmas input { width: 8.5rem; }
+.turmas-msg { flex-basis: 100%; font-size: .8rem; color: var(--acento); }
+body[data-modo="claro"] .turmas-msg { color: var(--acento-escuro); }
+
+/* ================= criador de avatar ================= */
+body.criador-aberto { overflow: hidden; }
+.criador-fundo {
+  position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: clamp(.4rem, 2vmin, 1.4rem);
+  background: radial-gradient(ellipse at 50% 30%, rgba(40, 8, 16, .82), rgba(6, 1, 3, .94));
+  animation: aparece .2s ease-out both;
+}
+body[data-modo="claro"] .criador-fundo { background: rgba(42, 10, 18, .55); }
+.criador {
+  width: min(70rem, 100%); max-height: 100%; display: flex; flex-direction: column; overflow: hidden;
+  background: var(--painel-solido); border: .16rem solid var(--borda-forte); border-radius: 1.2rem; box-shadow: var(--sombra), var(--brilho);
+}
+.criador-topo { display: flex; align-items: center; gap: .8rem; padding: .7rem 1rem; border-bottom: .14rem solid var(--borda); }
+.criador-topo h2 { flex: 1; font-size: 1.15rem; min-width: 0; overflow-wrap: anywhere; }
+.criador-topo h2 small { display: block; font-family: var(--fonte-texto); font-size: .75rem; color: var(--tinta-suave); font-weight: 400; }
+.criador-corpo { display: grid; grid-template-columns: minmax(15rem, 2fr) 3fr; min-height: 0; flex: 1; }
+
+/* lado do palco: o personagem grande, sob o holofote */
+.criador-palco {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .6rem; padding: 1rem;
+  background: radial-gradient(ellipse 60% 55% at 50% 38%, rgba(var(--luz), .2), transparent 70%), linear-gradient(180deg, var(--fundo-2), var(--fundo));
+  border-right: .14rem solid var(--borda); overflow: hidden;
+}
+.criador-palco::after { content: ""; position: absolute; left: 12%; right: 12%; bottom: 16%; height: 1.4rem; border-radius: 50%; background: radial-gradient(ellipse, rgba(var(--luz), .25), transparent 70%); pointer-events: none; }
+.criador-heroi { position: relative; z-index: 1; display: flex; align-items: flex-end; gap: .4rem; min-height: clamp(9rem, 32vmin, 16rem); }
+.criador-heroi .av-casa { width: clamp(8.5rem, 30vmin, 15rem); }
+.criador-heroi .grito { margin-bottom: 3rem; font-size: .85rem; max-width: 9rem; }
+.criador-nome { position: relative; z-index: 1; display: flex; align-items: center; gap: .4rem; font-family: var(--fonte-titulo); font-size: 1.1rem; text-align: center; overflow-wrap: anywhere; }
+.criador-desc { position: relative; z-index: 1; font-size: .8rem; color: var(--tinta-suave); text-align: center; }
+.criador-estados { position: relative; z-index: 1; display: flex; flex-wrap: wrap; justify-content: center; gap: .3rem; }
+.criador-estados .chip { min-height: 2.2rem; padding: .25rem .6rem; font-size: .8rem; }
+.criador-palco-acoes { position: relative; z-index: 1; display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; }
+
+/* lado das camadas: abas numeradas */
+.criador-camadas { display: flex; flex-direction: column; min-height: 0; }
+.criador-abas { display: flex; gap: .25rem; padding: .6rem .8rem 0; border-bottom: .14rem solid var(--borda); overflow-x: auto; scrollbar-width: thin; }
+.criador-aba {
+  display: flex; align-items: center; gap: .35rem; padding: .5rem .75rem; border: .12rem solid transparent; border-bottom: 0; border-radius: .7rem .7rem 0 0;
+  background: transparent; color: var(--tinta-suave); font: inherit; font-weight: 700; font-size: .88rem; white-space: nowrap; cursor: pointer; min-height: 2.6rem;
+}
+.criador-aba b { display: inline-grid; place-items: center; width: 1.4rem; height: 1.4rem; border-radius: 50%; background: var(--painel-2); font-size: .75rem; }
+.criador-aba[aria-selected="true"] { color: var(--tinta); background: var(--painel-2); border-color: var(--borda); margin-bottom: -.14rem; border-bottom: .14rem solid var(--painel-solido); }
+.criador-aba[aria-selected="true"] b { background: var(--acento); color: var(--sobre-acento); }
+.criador-painel { flex: 1; overflow-y: auto; padding: .9rem 1rem 1.1rem; display: flex; flex-direction: column; gap: .9rem; }
+.criador-painel h3 { font-size: .95rem; }
+.criador-painel .nota { margin-top: -.3rem; }
+
+/* grade de miniaturas (personagem, expressão e acessório) */
+.av-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(6.2rem, 1fr)); gap: .5rem; }
+.av-opcao {
+  display: flex; flex-direction: column; align-items: center; gap: .15rem; padding: .45rem .3rem .4rem; border-radius: .8rem; min-width: 0;
+  border: .14rem solid var(--borda); background: var(--painel); color: var(--tinta); font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; text-align: center; line-height: 1.15;
+}
+.av-opcao .avatar { width: 4.2rem; }
+.av-opcao small { font-weight: 400; font-size: .68rem; color: var(--tinta-suave); }
+.av-opcao:hover { border-color: var(--borda-forte); }
+.av-opcao.ativa { border-color: var(--borda-forte); background: linear-gradient(180deg, color-mix(in srgb, var(--acento) 26%, transparent), transparent), var(--painel-2); box-shadow: var(--brilho), inset 0 0 0 .1rem var(--acento); }
+.av-opcao-vazia { display: grid; place-items: center; width: 4.2rem; aspect-ratio: 120 / 124; font-size: 1.6rem; color: var(--tinta-suave); }
+
+/* cor, tom e traço */
+.tons { display: flex; gap: .4rem; flex-wrap: wrap; }
+.tom-botao { display: flex; flex-direction: column; align-items: center; gap: .2rem; padding: .3rem; border: .14rem solid transparent; border-radius: .7rem; background: transparent; color: var(--tinta-suave); font: inherit; font-size: .7rem; cursor: pointer; }
+.tom-botao i { width: 2.4rem; height: 2.4rem; border-radius: 50%; background: var(--amostra); border: .12rem solid rgba(255, 255, 255, .8); }
+body[data-modo="claro"] .tom-botao i { border-color: var(--tinta); }
+.tom-botao.ativa { border-color: var(--borda-forte); color: var(--tinta); font-weight: 700; background: var(--painel-2); }
+.estilos { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: .5rem; }
+.estilo-botao { display: flex; align-items: center; gap: .6rem; padding: .5rem .7rem; border-radius: .8rem; border: .14rem solid var(--borda); background: var(--painel); color: var(--tinta); font: inherit; text-align: left; cursor: pointer; }
+.estilo-botao .avatar { width: 3.6rem; }
+.estilo-botao strong { display: block; font-family: var(--fonte-titulo); font-weight: 400; font-size: 1rem; }
+.estilo-botao span { font-size: .75rem; color: var(--tinta-suave); }
+.estilo-botao.ativa { border-color: var(--borda-forte); background: var(--painel-2); box-shadow: var(--brilho), inset 0 0 0 .1rem var(--acento); }
+.criador-campo input { width: 100%; min-height: 2.8rem; padding: .45rem .7rem; border-radius: .6rem; border: .12rem solid var(--borda); background: var(--painel); color: var(--tinta); font: inherit; font-size: 1.05rem; font-weight: 700; }
+.criador-campo input:focus-visible { border-color: var(--borda-forte); outline: none; box-shadow: var(--brilho); }
+.criador-rodape { display: flex; justify-content: space-between; align-items: center; gap: .6rem; flex-wrap: wrap; padding: .6rem 1rem; border-top: .14rem solid var(--borda); }
+.criador-rodape .nota { margin: 0; }
+
+/* tablet em pé e celular: palco em cima, camadas embaixo */
+@media (max-width: 760px), (max-aspect-ratio: 4/5) {
+  .criador { height: 100%; }
+  .criador-corpo { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .criador-palco { border-right: 0; border-bottom: .14rem solid var(--borda); padding: .6rem; gap: .35rem; }
+  .criador-heroi { min-height: 0; }
+  .criador-heroi .av-casa { width: clamp(6rem, 26vmin, 9rem); }
+  .criador-heroi .grito { margin-bottom: 1.6rem; }
+  .criador-desc { display: none; }
+  .av-grade { grid-template-columns: repeat(auto-fill, minmax(5.2rem, 1fr)); }
+  .av-opcao .avatar { width: 3.4rem; }
+  .criador-aba span { display: none; }
+  .criador-aba[aria-selected="true"] span { display: inline; }
+}
+@media (max-height: 560px) and (min-aspect-ratio: 4/3) {
+  .criador-heroi { min-height: 0; }
+  .criador-heroi .av-casa { width: 7rem; }
+  .criador-desc { display: none; }
+}

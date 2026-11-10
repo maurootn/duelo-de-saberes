@@ -563,6 +563,17 @@
       var m2 = R.novaPartida({ rodadas: 1, equipes: [{ nome: "A" }, { nome: "B" }], recentes: usadas }, falso, semente(4));
       m2.estado.cartas.forEach(function (c) { verdade(usadas.indexOf(c.q) < 0, "repetiu " + c.q); });
     });
+    grupo("Equipes e avatares");
+    teste("A partida guarda o avatar e o grito de guerra de cada equipe", function () {
+      var av = { base: "atomo", expr: "sapeca", acess: "coroa", tom: 1, estilo: "fofo" };
+      var m = R.novaPartida({ rodadas: 1, equipes: [{ nome: "A", cor: "azul", forma: "circulo", avatar: av, grito: "Vamos!" }, { nome: "B" }] }, banco, semente(5));
+      igual(m.estado.equipes[0].avatar, av);
+      igual(m.estado.equipes[0].grito, "Vamos!");
+      igual(m.estado.equipes[1].avatar, null);
+      av.base = "gota";
+      igual(m.estado.equipes[0].avatar.base, "atomo", "a partida guarda uma cópia");
+    });
+    grupo("Níveis e banco");
     teste("As 20 questões de teste seguem os limites do plano", function () {
       igual(banco.length, 20);
       banco.forEach(function (x) {
