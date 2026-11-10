@@ -2,7 +2,7 @@
   "_como_usar": "Lista das disciplinas do modo Sala de Aula. Para lançar uma disciplina: crie a pasta temas/<id>/ com tema.js e tema.css, ponha os arquivos de questões em questoes/ e, aqui, mude \"pronta\" para true, \"tema\" para true e liste os arquivos em \"questoes\". Nenhum outro arquivo do jogo precisa mudar. Disciplina com \"pronta\": false aparece no menu como \"em breve\".",
   "disciplinas": [
     { "id": "biologia",   "nome": "Biologia",          "pronta": true,  "tema": true,  "questoes": ["../dados/questoes/biologia-1.json"] },
-    { "id": "quimica",    "nome": "Química",           "pronta": true,  "tema": true,  "questoes": ["questoes/teste-quimica-1.json"] },
+    { "id": "quimica",    "nome": "Química",           "pronta": true,  "tema": true,  "questoes": ["../dados/questoes/quimica-1.json"] },
     { "id": "fisica",     "nome": "Física",            "pronta": false, "tema": false, "questoes": [] },
     { "id": "matematica", "nome": "Matemática",        "pronta": false, "tema": false, "questoes": [] },
     { "id": "portugues",  "nome": "Língua Portuguesa", "pronta": false, "tema": false, "questoes": [] },
