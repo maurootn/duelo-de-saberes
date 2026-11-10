@@ -348,7 +348,7 @@
     var e = E(), daVez = eqp(e.vez), restam = motor.cartasRestantes();
     var dicas = [];
     if (e.tesoura[e.vez]) dicas.push(ICONE.tesoura + ' Vocês têm uma Tesoura: dá para usar na pergunta, antes de responder.');
-    if (e.asCegas[e.vez]) dicas.push(ICONE.olho + ' Às cegas: a próxima pergunta vem sem alternativas.');
+    if (e.asCegas[e.vez]) dicas.push(ICONE.olho + ' Às cegas: na próxima pergunta, as alternativas aparecem só por 5 s.');
     if (e.contraRelogio[e.vez]) dicas.push(ICONE.relogio + ' Contra o relógio: a próxima pergunta tem só 10 s.');
     return '<main class="tela tabuleiro">' +
       barraJogo(
@@ -600,8 +600,8 @@
   function letrasOcultas(j) {
     var letras = ["A", "B", "C", "D"];
     var motivo = j.etapa === "passe" ? "Passe: as alternativas foram escondidas e trocaram de letra." :
-      j.sumiram ? "Em Dobro: as alternativas sumiram e trocaram de letra." :
-      j.cegas ? "Às cegas: as alternativas não aparecem nesta pergunta." : "As alternativas estão escondidas.";
+      j.cegas ? "Às cegas: os 5 s acabaram, as alternativas sumiram e trocaram de letra." :
+      j.sumiram ? "Em Dobro: as alternativas sumiram e trocaram de letra." : "As alternativas estão escondidas.";
     return '<div class="ocultas">' +
       '<p class="ocultas-titulo">Alternativas ocultas</p>' +
       '<p class="ocultas-motivo">' + esc(motivo) + ' Escolham uma letra: o conteúdo aparece depois.</p>' +

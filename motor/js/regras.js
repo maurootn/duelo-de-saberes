@@ -10,7 +10,8 @@
    - armadilha: Passar bloqueado, tempo esgotado conta como erro, errou vai ao passe pelo valor normal;
    - Em Dobro: vale o dobro; alternativas somem aos 10 s ou ao fim da leitura (o que vier depois);
      errou perde 50% do valor normal; no passe vale o valor normal + 50%;
-   - alternativas ocultas (Às cegas, Em Dobro depois dos 10 s e passe): ficam só as letras, sorteadas
+   - Às cegas: alternativas visíveis só nos primeiros 5 s;
+   - alternativas ocultas (Às cegas depois dos 5 s, Em Dobro depois dos 10 s e passe): ficam só as letras, sorteadas
      de novo; a equipe escolhe uma, o conteúdo é revelado e o app julga sozinho (pedido de 09/11/2026);
    - passe aceito: alternativas ocultas, 10 s; tempo esgotado = erro → roleta de punição;
    - Tesoura: uso único, no máximo uma por equipe, qualquer carta com alternativas visíveis;
@@ -41,7 +42,7 @@
     { id: "meio",         nome: "Meio estrago",      chance: 20, texto: "Perde metade do valor da carta" },
     { id: "fora",         nome: "Fora da jogada",    chance: 15, texto: "Pula o próximo turno" },
     { id: "lanterna",     nome: "Ajuda ao lanterna", chance: 10, texto: "Doa metade do valor para a equipe em último lugar" },
-    { id: "cegas",        nome: "Às cegas",          chance: 10, texto: "A próxima questão da equipe vem sem alternativas" },
+    { id: "cegas",        nome: "Às cegas",          chance: 10, texto: "Na próxima questão da equipe, as alternativas aparecem só por 5 s" },
     { id: "relogio",      nome: "Contra o relógio",  chance: 10, texto: "A próxima questão da equipe tem só 10 s" },
     { id: "sem-poderes",  nome: "Sem poderes",       chance: 5,  texto: "Perde a Tesoura guardada; se não tiver, perde metade do valor" },
     { id: "escapou",      nome: "Escapou!",          chance: 5,  texto: "Nada acontece" }
@@ -55,6 +56,7 @@
 
   var TEMPO_PASSE = 10;          // segundos da pergunta de passe
   var TEMPO_RELOGIO = 10;        // "Contra o relógio"
+  var CEGAS_SOMEM = 5;           // Às cegas: alternativas aparecem só por 5 s (pedido de 09/11/2026)
   var DOBRO_SOMEM = 10;          // Em Dobro: alternativas somem aos 10 s...
   var CARACTERES_POR_SEGUNDO = 14; // ...ou ao fim da leitura estimada (voz real chega na Fase 7)
   var LIMITE_DESFAZER = 80;
@@ -232,12 +234,13 @@
         etapa: "principal",
         ordem: embaralhar([0, 1, 2, 3], m.rng),
         eliminadas: [],
-        aberta: !!cegas,                 // alternativas ocultas: só as letras aparecem
-        ordemOculta: cegas ? embaralhar([0, 1, 2, 3], m.rng) : null,
+        aberta: false,                   // alternativas ocultas: só as letras aparecem
+        ordemOculta: null,
         oculta: false,                   // a resposta foi dada por letra oculta
         cegas: !!cegas, relogio: !!relogio,
         tempoTotal: tempo, restante: tempo, pausado: false,
-        somemEm: esp === "dobro" ? Math.max(DOBRO_SOMEM, tempoLeitura(questao)) : null,
+        /* Às cegas: alternativas só por 5 s; Em Dobro: aos 10 s ou no fim da leitura */
+        somemEm: cegas ? CEGAS_SOMEM : esp === "dobro" ? Math.max(DOBRO_SOMEM, tempoLeitura(questao)) : null,
         tesouraUsada: false, giroTesoura: null,
         passe: null, punicao: null, resultado: null,
         perdaPrincipal: 0
@@ -490,7 +493,7 @@
           efeito.beneficiada = alvo;
           efeito.texto = "Doou " + metade + " pontos para " + e.equipes[alvo].nome + ", em último lugar.";
           break;
-        case "cegas": e.asCegas[eq] = true; efeito.texto = "A próxima questão da equipe vem sem alternativas."; break;
+        case "cegas": e.asCegas[eq] = true; efeito.texto = "Na próxima questão da equipe, as alternativas aparecem só por 5 s."; break;
         case "relogio": e.contraRelogio[eq] = true; efeito.texto = "A próxima questão da equipe terá só 10 s."; break;
         case "sem-poderes":
           if (e.tesoura[eq]) { e.tesoura[eq] = false; efeito.texto = "Perdeu a Tesoura guardada."; efeito.perdeuTesoura = true; }
@@ -719,7 +722,7 @@
   var Regras = {
     novaPartida: novaPartida, retomar: retomar,
     ESPECIAIS: ESPECIAIS, FATIAS_TESOURA: FATIAS_TESOURA, FATIAS_PUNICAO: FATIAS_PUNICAO, NIVEIS: NIVEIS,
-    VALORES: VALORES, TEMPO_PASSE: TEMPO_PASSE, TEMPO_RELOGIO: TEMPO_RELOGIO, DOBRO_SOMEM: DOBRO_SOMEM,
+    VALORES: VALORES, TEMPO_PASSE: TEMPO_PASSE, TEMPO_RELOGIO: TEMPO_RELOGIO, DOBRO_SOMEM: DOBRO_SOMEM, CEGAS_SOMEM: CEGAS_SOMEM,
     tempoLeitura: tempoLeitura, sortearPeso: sortearPeso
   };
   if (typeof module !== "undefined" && module.exports) module.exports = Regras;

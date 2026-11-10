@@ -210,9 +210,11 @@
       cortadas.forEach(function (c) { verdade(m.estado.jogada.ordemOculta.indexOf(c) < 0, "voltou " + c); });
       igual(m.responder(cortadas[0]), null);
     });
-    teste("Às cegas: a equipe escolhe uma das 4 letras ocultas", function () {
+    teste("Às cegas: alternativas só por 5 s; depois a equipe escolhe uma das 4 letras ocultas", function () {
       var m = partida(2); m.estado.asCegas[0] = true; var j = abrir(m, null, 100);
-      igual(j.ordemOculta.length, 4);
+      igual(j.aberta, false); igual(j.somemEm, 5);
+      m.esconderAlternativas();
+      igual(m.estado.jogada.ordemOculta.length, 4);
       m.responder(certa(m));
       igual(m.estado.pontos[0], 100);
     });
@@ -350,8 +352,15 @@
       igual(m.estado.tesoura[0], false);
       igual(m.usarTesoura(), null);
     });
-    teste("Não pode usar em questão sem alternativas (Às cegas ou passe)", function () {
+    teste("Às cegas: pode usar nos 5 s com alternativas, não depois que somem", function () {
       var m = partida(2); m.estado.tesoura[0] = true; m.estado.asCegas[0] = true; abrir(m, null);
+      verdade(m.podeUsarTesoura(), "antes de sumir");
+      m.esconderAlternativas();
+      verdade(!m.podeUsarTesoura(), "depois de sumir");
+    });
+    teste("Não pode usar no passe (alternativas ocultas)", function () {
+      var m = partida(2); m.estado.tesoura[1] = true; abrir(m, null);
+      m.passar(); m.abrirPasse(); m.aceitarPasse();
       verdade(!m.podeUsarTesoura());
     });
     teste("Pode usar em armadilha e em Em Dobro antes de as alternativas sumirem", function () {
@@ -400,11 +409,11 @@
       igual(m.estado.jogada.punicao.virou, "meio");
       igual(m.estado.pontos, [700, -700, 100]);
     });
-    teste("Às cegas: a próxima questão da equipe vem sem alternativas", function () {
+    teste("Às cegas: na próxima questão da equipe, as alternativas ficam só 5 s", function () {
       var m = punir("cegas"); igual(m.estado.asCegas[1], true);
       m.concluirJogada(); // vez da equipe 2
       abrir(m, null);
-      igual(m.estado.jogada.aberta, true);
+      igual(m.estado.jogada.somemEm, 5);
       igual(m.estado.asCegas[1], false, "o efeito é consumido");
     });
     teste("Contra o relógio: a próxima questão da equipe tem só 10 s", function () {
