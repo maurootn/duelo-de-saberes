@@ -1,0 +1,90 @@
+/* Duelo de Saberes 2.0 · Fase 10 · piloto em sala
+   Opções "em breve" da configuração e tela Relatório de acertos.
+   Usa só as variáveis do Palco (estilo.css), então vale no escuro, na sala clara e no alto contraste. */
+
+/* ---------- nível ou modo ainda sem banco completo ---------- */
+.opcao-breve { opacity: .5; cursor: not-allowed; border-style: dashed; }
+.opcao-breve:hover { border-color: var(--borda); }
+.opcao-breve strong small {
+  font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--acento);
+  margin-left: .35rem; vertical-align: .1em;
+}
+body[data-modo="claro"] .opcao-breve strong small { color: var(--acento-escuro); }
+
+/* ---------- tela Relatório ---------- */
+.rel-grade { grid-template-columns: 1fr; max-width: 64rem; }
+.relatorio .bloco h2 { margin-bottom: .5rem; }
+.rel-filtros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.rel-resumo { margin-top: .9rem; font-size: .95rem; color: var(--tinta-suave); }
+.rel-resumo b { color: var(--tinta); font-size: 1.1rem; }
+.rel-acoes { display: flex; gap: .5rem; flex-wrap: wrap; }
+.rel-msg { margin: 0 0 .7rem; padding: .5rem .8rem; border-radius: .6rem; background: var(--painel-2); border: .1rem solid var(--borda-forte); font-weight: 700; }
+.rel-nota-topo { margin: 0 0 .7rem; }
+
+.rel-valores { display: flex; flex-direction: column; gap: .8rem; }
+.rel-valor { padding: .7rem .8rem; border-radius: .8rem; background: var(--painel); border: .1rem solid var(--borda); }
+.rel-valor-topo { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; }
+.rel-selo {
+  font-family: var(--fonte-titulo); font-weight: 400; font-size: 1rem; line-height: 1;
+  padding: .35rem .55rem; border-radius: .5rem; min-width: 3.4rem; text-align: center;
+  background: linear-gradient(180deg, var(--acento-claro), var(--acento) 60%, var(--acento-escuro)); color: var(--sobre-acento);
+}
+.rel-taxa { font-family: var(--fonte-titulo); font-size: 1.7rem; line-height: 1; color: var(--prata); min-width: 3.6ch; }
+.rel-situacao { font-weight: 700; font-size: .9rem; }
+.rel-dentro .rel-situacao { color: var(--certo); }
+.rel-abaixo .rel-situacao, .rel-acima .rel-situacao { color: var(--quente); }
+.rel-sem-dados .rel-situacao { color: var(--tinta-suave); font-weight: 400; }
+
+/* trilho 0–100%: a faixa clara é a meta do plano, a barra é a taxa medida */
+.rel-trilho {
+  position: relative; height: 1.1rem; margin: .6rem 0 .45rem; border-radius: 99rem; overflow: hidden;
+  background: var(--painel-2); border: .1rem solid var(--borda);
+}
+.rel-meta, .rel-legenda-meta {
+  background: repeating-linear-gradient(135deg, rgba(var(--luz), .32) 0 .35rem, rgba(var(--luz), .14) .35rem .7rem);
+  box-shadow: inset .12rem 0 0 var(--tinta), inset -.12rem 0 0 var(--tinta);
+}
+body[data-modo="claro"] .rel-meta, body[data-modo="claro"] .rel-legenda-meta {
+  background: repeating-linear-gradient(135deg, rgba(42, 10, 18, .2) 0 .35rem, rgba(42, 10, 18, .08) .35rem .7rem);
+}
+.rel-meta { position: absolute; top: 0; bottom: 0; z-index: 2; }
+.rel-barra { position: absolute; left: 0; top: 0; bottom: 0; z-index: 1; border-radius: 99rem; background: var(--acento); }
+.rel-dentro .rel-barra { background: var(--certo); }
+.rel-abaixo .rel-barra, .rel-acima .rel-barra { background: var(--quente); }
+.rel-legenda-meta { display: inline-block; width: 1.6rem; height: .8rem; border-radius: .2rem; vertical-align: -.1em; }
+.rel-conta { font-size: .82rem; color: var(--tinta-suave); line-height: 1.5; }
+.rel-conta b { color: var(--tinta); }
+
+.rel-questoes { display: flex; flex-direction: column; gap: .5rem; }
+.rel-q { display: grid; grid-template-columns: auto 1fr auto; gap: .8rem; align-items: center; padding: .55rem .7rem; border-radius: .7rem; background: var(--painel); border: .1rem solid var(--borda); }
+.rel-q .rel-selo { font-size: .8rem; min-width: 2.8rem; }
+.rel-q-texto { min-width: 0; font-size: .85rem; }
+.rel-q-texto span { display: block; color: var(--tinta-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rel-q-taxa { font-family: var(--fonte-titulo); font-size: 1.2rem; text-align: right; color: var(--quente); line-height: 1.1; }
+.rel-q-taxa small { display: block; font-family: var(--fonte-texto); font-size: .7rem; color: var(--tinta-suave); font-weight: 700; }
+
+.rel-partidas { display: flex; flex-direction: column; gap: .4rem; }
+.rel-partidas li { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .45rem .2rem; border-bottom: .06rem solid var(--borda); font-size: .85rem; }
+.rel-partidas li.fora-filtro { opacity: .5; }
+.rel-apagar { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; margin-top: 1rem; }
+.rel-perigo { background: var(--errado) !important; border-color: var(--errado) !important; color: var(--sobre-errado) !important; box-shadow: none !important; }
+
+.rel-texto { width: 100%; min-height: 12rem; margin: 0 0 .8rem; padding: .6rem; border-radius: .6rem; border: .1rem solid var(--borda-forte); background: var(--painel-solido); color: var(--tinta); font: .75rem/1.4 ui-monospace, Consolas, monospace; }
+.rel-vazio p { max-width: 40rem; }
+
+/* alto contraste: faixa da meta em amarelo, barras em branco */
+body[data-contraste="alto"] .rel-meta, body[data-contraste="alto"] .rel-legenda-meta { background: repeating-linear-gradient(135deg, #FFE600 0 .35rem, #000000 .35rem .7rem); box-shadow: none; }
+body[data-contraste="alto"] .rel-barra { background: #FFFFFF !important; }
+body[data-contraste="alto"] .rel-situacao, body[data-contraste="alto"] .rel-q-taxa { color: #FFE600 !important; }
+
+/* tablet e celular */
+@media (max-width: 52rem) {
+  .rel-filtros { grid-template-columns: 1fr; }
+}
+@media (max-width: 34rem) {
+  .rel-q { grid-template-columns: auto 1fr; }
+  .rel-q-taxa { grid-column: 1 / -1; text-align: left; display: flex; gap: .6rem; align-items: baseline; }
+  .rel-q-taxa small { display: inline; }
+  .rel-partidas li { flex-direction: column; align-items: flex-start; }
+  .relatorio .bloco-topo { flex-direction: column; align-items: flex-start; }
+}

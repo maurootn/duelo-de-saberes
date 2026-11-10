@@ -17,7 +17,13 @@
    - Tesoura: uso único, no máximo uma por equipe, qualquer carta com alternativas visíveis;
    - Ajuda ao lanterna: quem errou perde metade e a lanterna ganha essa metade
      (lanterna empatada: a primeira na ordem das equipes);
-   - morte súbita: questões de 500, sem passe e sem especiais, não muda o placar. */
+   - morte súbita: questões de 500, sem passe e sem especiais, não muda o placar.
+   Fase 10 (piloto em sala, 10/11/2026):
+   - cada jogada concluída entra em estado.registro (questão, saída da equipe da vez e saída do passe),
+     para o relatório de acertos; como fica no estado, o Desfazer também desfaz o registro;
+   - nível só pode ser escolhido com banco completo: 20 questões de cada valor em cada série do nível
+     (5 rodadas × 4 cartas, o mínimo do plano para lançar); ver niveisDisponiveis;
+   - morte súbita evita as questões de 500 já usadas na partida; se todas já saíram, usa a vista há mais tempo. */
 
 (function (raiz) {
   "use strict";
@@ -60,6 +66,33 @@
   var DOBRO_SOMEM = 10;          // Em Dobro: alternativas somem aos 10 s...
   var CARACTERES_POR_SEGUNDO = 14; // ...ou ao fim da leitura estimada (voz real chega na Fase 7)
   var LIMITE_DESFAZER = 80;
+  var MAX_RODADAS = 5;
+  var CARTAS_POR_VALOR = 4;
+  var MINIMO_POR_VALOR = MAX_RODADAS * CARTAS_POR_VALOR; // 20: uma partida completa sem repetir
+
+  /* nível disponível = cada série do nível tem pelo menos 20 questões de cada valor */
+  function contarBanco(banco) {
+    var c = {};
+    (banco || []).forEach(function (x) {
+      var k = x.serie + "|" + x.valor;
+      c[k] = (c[k] || 0) + 1;
+    });
+    return c;
+  }
+  function nivelDisponivel(nivel, banco, contagem) {
+    var pesos = NIVEIS[nivel];
+    if (!pesos) return false;
+    var c = contagem || contarBanco(banco);
+    return Object.keys(pesos).every(function (s) {
+      if (!(pesos[s] > 0)) return true;
+      return VALORES.every(function (v) { return (c[s + "|" + v] || 0) >= MINIMO_POR_VALOR; });
+    });
+  }
+  function niveisDisponiveis(banco) {
+    var c = contarBanco(banco), r = {};
+    Object.keys(NIVEIS).forEach(function (n) { r[n] = nivelDisponivel(n, banco, c); });
+    return r;
+  }
 
   function clonar(o) { return JSON.parse(JSON.stringify(o)); }
 
@@ -95,6 +128,8 @@
     var n = cfg.equipes.length;
     var estado = {
       versao: 1,
+      id: cfg.id || novoId(rng),
+      inicio: cfg.inicio || null,
       fase: "tabuleiro",
       rodada: 1,
       rodadas: cfg.rodadas || 1,
@@ -122,7 +157,8 @@
       }),
       forcar: { tesoura: null, punicao: null, passe: null },
       morte: null,
-      vencedor: null
+      vencedor: null,
+      registro: []              // Fase 10: uma linha por jogada concluída (relatório de acertos)
     };
     var m = criarMotor(estado, banco, rng);
     m._montarRodada();
@@ -135,6 +171,7 @@
   var EXTRAS_EQUIPE = [0, 5, 10, 15];
   function extraValido(x) { x = Number(x) || 0; return EXTRAS_EQUIPE.indexOf(x) >= 0 ? x : 0; }
 
+  function novoId(rng) { return "p" + Date.now().toString(36) + Math.floor((rng || Math.random)() * 1e6).toString(36); }
   function zeros(n) { var a = []; for (var i = 0; i < n; i++) a.push(0); return a; }
   function falsos(n) { var a = []; for (var i = 0; i < n; i++) a.push(false); return a; }
 
@@ -148,6 +185,8 @@
   /* ================================================================ */
   function criarMotor(estado, banco, rng) {
     var m = { estado: estado, banco: banco, rng: rng, pilha: [] };
+    if (!Array.isArray(estado.registro)) estado.registro = [];   // partidas salvas antes da Fase 10
+    if (!estado.id) estado.id = novoId(rng);
     var E = function () { return m.estado; };
 
     function n() { return E().equipes.length; }
@@ -339,6 +378,7 @@
 
       if (j.etapa === "passe") {
         var receb = j.passe.equipe;
+        j.saidaPasse = acertou ? "acerto" : (porTempo ? "tempo" : "erro");
         if (acertou) {
           var ganho = j.valor * 1.5;
           e.pontos[receb] += ganho;
@@ -365,6 +405,7 @@
           if (!e.tesoura[eq]) { e.tesoura[eq] = true; extra = "A equipe guardou a Tesoura."; }
           else extra = "A equipe já tinha uma Tesoura guardada.";
         }
+        j.saida = "acerto";
         j.resultado = { tipo: "acerto", titulo: j.especial === "dobro" ? "Acertou em dobro!" : "Acertou!",
           delta: ganhoP, equipe: eq, revelar: true, texto: extra, ganhouTesoura: extra.indexOf("guardou") >= 0 };
         e.fase = "resultado";
@@ -378,6 +419,7 @@
       if (j.especial === "congelou") { e.semTurno[eq] += 1; texto = "Congelou: a equipe pula o próximo turno."; }
       if (j.especial === "tudo") texto = "Tudo ou Nada: perdeu o valor inteiro da carta.";
       c.resultado = "erro";
+      j.saida = porTempo ? "tempo" : "erro";
       j.resultado = { tipo: "erro", titulo: porTempo ? "Tempo esgotado" : "Errou", delta: -perda, equipe: eq,
         revelar: false, texto: texto, vaiParaPasse: true };
       e.fase = "resultado";
@@ -387,6 +429,7 @@
     function irParaPasse(motivo) {
       var e = E(), j = e.jogada;
       e.cartas[j.carta].resultado = "passe";
+      j.saida = motivo === "tempo" ? "tempo" : "passou";
       j.resultado = { tipo: "passe", titulo: motivo === "tempo" ? "Tempo esgotado" : "Passou a vez", delta: null,
         equipe: j.equipe, revelar: false, texto: "Ninguém perde pontos.", vaiParaPasse: true };
       e.fase = "resultado";
@@ -409,6 +452,7 @@
       j.passe = { elegiveis: eleg, equipe: null, precisaSorteio: eleg.length > 1, sorteado: false };
       if (eleg.length === 1) j.passe.equipe = eleg[0];
       if (eleg.length === 0) {
+        j.saidaPasse = "ninguem";
         e.cartas[j.carta].resultado = e.cartas[j.carta].resultado || "passe";
         j.resultado = { tipo: "passe", titulo: "Ninguém pode receber", delta: null, equipe: null, revelar: true,
           texto: "Todas as outras equipes estão sem turno. A carta sai do tabuleiro." };
@@ -441,6 +485,7 @@
       j.resultado = { tipo: "passe", titulo: "Passe recusado", delta: null, equipe: j.passe.equipe, revelar: true,
         texto: "Ninguém pontua e a carta sai do tabuleiro." };
       j.passe.recusado = true;
+      j.saidaPasse = "recusado";
       e.fase = "resultado";
       return true;
     };
@@ -449,6 +494,7 @@
       var e = E(), j = e.jogada;
       if (e.fase !== "passe" || j.passe.equipe === null) return null;
       guardar();
+      j.ocultaPrincipal = !!j.oculta;
       j.etapa = "passe";
       j.aberta = true;
       j.eliminadas = [];
@@ -528,12 +574,32 @@
       return alvo;
     }
 
+    /* ---------- registro para o relatório de acertos (Fase 10) ----------
+       s (saída da equipe da vez): acerto | erro | passou | tempo
+       p (saída do passe): null (não foi ao passe) | acerto | erro | tempo | recusado | ninguem
+       marcas do que muda a dificuldade: t Tesoura usada, o resposta por letra oculta,
+       c Às cegas, r Contra o relógio, x especial da carta, m morte súbita */
+    function registrar(j) {
+      var e = E(), qq = q(j.q) || {};
+      var r = { q: j.q, v: j.valor, se: qq.serie || null, ro: e.rodada, eq: j.equipe, s: j.saida || null,
+        p: j.etapa === "morte" ? null : (j.saidaPasse || (j.passe ? "ninguem" : null)) };
+      if (j.especial) r.x = j.especial;
+      if (j.tesouraUsada) r.t = 1;
+      if (j.ocultaPrincipal || (j.etapa === "principal" && j.oculta)) r.o = 1;
+      if (j.cegas) r.c = 1;
+      if (j.relogio) r.r = 1;
+      if (j.etapa === "morte") r.m = 1;
+      e.registro.push(r);
+    }
+    m._registrar = registrar;
+
     /* ---------- fim da jogada e passagem da vez ---------- */
     m.concluirJogada = function () {
       var e = E(), j = e.jogada;
       if (e.fase !== "resultado" || !j || j.resultado.vaiParaPasse) return null;
       if (j.etapa === "morte") return m.continuarMorte();
       guardar();
+      registrar(j);
       e.cartas[j.carta].usada = true;
       e.trajetoria.push(e.pontos.slice());
       e.jogada = null;
@@ -634,8 +700,17 @@
       var de500 = m.banco.filter(function (x) { return x.valor === 500; });
       var livres = de500.filter(function (x) { return ms.usadas.indexOf(x.id) < 0; });
       if (!livres.length) { ms.usadas = []; livres = de500; }
-      var questao = livres[Math.floor(m.rng() * livres.length)];
+      /* primeiro as que ainda não apareceram (nem nesta partida, nem nas recentes); depois as vistas há mais tempo */
+      var hist = e.usadas || [];
+      var nunca = livres.filter(function (x) { return hist.indexOf(x.id) < 0; });
+      var questao;
+      if (nunca.length) questao = nunca[Math.floor(m.rng() * nunca.length)];
+      else {
+        livres = livres.slice().sort(function (a, b) { return hist.lastIndexOf(a.id) - hist.lastIndexOf(b.id); });
+        questao = livres[0];
+      }
       ms.usadas.push(questao.id);
+      e.usadas.push(questao.id);
       var tempo = (questao.tempo || 20) + e.tempoExtraLeitura + extraEquipe(eq);
       e.jogada = {
         carta: -1, q: questao.id, valor: 500, especial: null, equipe: eq, etapa: "morte",
@@ -651,6 +726,7 @@
     function julgarMorte(acertou) {
       var e = E(), j = e.jogada, ms = e.morte;
       ms.resultados[j.equipe] = acertou;
+      j.saida = acertou ? "acerto" : (j.porTempo ? "tempo" : "erro");
       ms.fila.shift();
       j.resultado = { tipo: acertou ? "acerto" : "erro", titulo: acertou ? "Acertou!" : (j.porTempo ? "Tempo esgotado" : "Errou"),
         delta: null, equipe: j.equipe, revelar: true, texto: "Morte súbita: o placar não muda." };
@@ -662,6 +738,7 @@
       var e = E(), ms = e.morte;
       if (e.fase !== "resultado" || !ms) return null;
       guardar();
+      if (e.jogada) registrar(e.jogada);
       e.jogada = null;
       if (ms.fila.length) { e.fase = "morte-leva"; return "proxima"; }
       /* fim da leva */
@@ -729,6 +806,7 @@
 
   var Regras = {
     novaPartida: novaPartida, retomar: retomar, EXTRAS_EQUIPE: EXTRAS_EQUIPE,
+    niveisDisponiveis: niveisDisponiveis, nivelDisponivel: nivelDisponivel, MINIMO_POR_VALOR: MINIMO_POR_VALOR, MAX_RODADAS: MAX_RODADAS,
     ESPECIAIS: ESPECIAIS, FATIAS_TESOURA: FATIAS_TESOURA, FATIAS_PUNICAO: FATIAS_PUNICAO, NIVEIS: NIVEIS,
     VALORES: VALORES, TEMPO_PASSE: TEMPO_PASSE, TEMPO_RELOGIO: TEMPO_RELOGIO, DOBRO_SOMEM: DOBRO_SOMEM, CEGAS_SOMEM: CEGAS_SOMEM,
     tempoLeitura: tempoLeitura, sortearPeso: sortearPeso

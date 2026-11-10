@@ -38,7 +38,7 @@
 <main class="pagina">
   <header class="topo">
     <a class="botao botao-contorno botao-pequeno" href="./">Voltar ao jogo</a>
-    <h1 class="barra-titulo">Lista de testes · Fases 4 a 7</h1>
+    <h1 class="barra-titulo">Lista de testes · Fases 4 a 10</h1>
   </header>
 
   <section class="bloco" aria-labelledby="t-auto">
@@ -64,10 +64,12 @@
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 
   /* ---------- automáticos ---------- */
-  fetch("questoes/teste-biologia-1.json", { cache: "no-cache" })
-    .then(function (r) { return r.json(); })
-    .then(function (banco) {
-      var res = window.TESTES_REGRAS(window.REGRAS, banco), falhas = res.filter(function (r) { return !r.ok; });
+  function json(u) { return fetch(u, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error(u + ": HTTP " + r.status); return r.json(); }); }
+  /* Fase 10: além das regras (questões de teste), partidas inteiras de 5 rodadas com os bancos reais */
+  Promise.all([json("questoes/teste-biologia-1.json"), json("../dados/questoes/biologia-1.json"), json("../dados/questoes/quimica-1.json")])
+    .then(function (b) {
+      var banco = b[0];
+      var res = window.TESTES_REGRAS(window.REGRAS, banco).concat(window.TESTES_PILOTO(window.REGRAS, { biologia: b[1], quimica: b[2] })), falhas = res.filter(function (r) { return !r.ok; });
       document.getElementById("resumo").innerHTML =
         '<b class="' + (falhas.length ? "falha" : "ok") + '">' + (res.length - falhas.length) + ' de ' + res.length + '</b>' +
         '<span>' + (falhas.length ? falhas.length + " teste(s) falharam" : "todos os testes passaram") + '</span>';
@@ -118,6 +120,11 @@
     ["Fase 7 · Alto contraste", "Ligue Alto contraste: fundo preto, texto branco, destaques amarelos, sem microscópio nem tabela periódica ao fundo, em Biologia, Química e Palco, nas versões escura e sala clara. Formas das equipes continuam no avatar."],
     ["Fase 7 · Tamanho do texto", "Grande e Maior aumentam enunciado, alternativas, placar e menus. Confira no projetor e no celular se a pergunta ainda cabe sem rolar para o lado."],
     ["Fase 7 · Reduzir pela configuração", "Animações → Reduzir (sem mexer no aparelho): sem mitose, sem deriva, roletas curtas, sem confete."],
+    ["Fase 10 · Em breve no menu", "Nova partida: Arena, Estudioso, Veterano e as 6 disciplinas sem banco aparecem apagadas com \"em breve\" e não dão para tocar. Biologia e Química abrem só no Calouro."],
+    ["Fase 10 · Partida completa", "5 rodadas no Calouro: nenhuma pergunta repete na partida (os testes automáticos acima jogam 100 cartas sozinhos com os bancos reais e conferem)."],
+    ["Fase 10 · Relatório", "Jogue algumas cartas (acerte, erre, passe, vá ao passe) e volte à tela inicial → Relatório de acertos: os números batem com o que aconteceu. Desfazer uma carta concluída também a tira do relatório."],
+    ["Fase 10 · Copiar dados", "No Relatório, Copiar dados mostra \"Dados copiados\"; cole num bloco de notas para conferir. No celular, se não copiar, aparece o texto para selecionar; Baixar .txt também serve."],
+    ["Fase 10 · Partidas de teste", "Tire do relatório as partidas que você jogou para testar, antes do piloto com a turma."],
     ["Fase 7 · Só teclado", "Sem mouse: Tab percorre os botões com o foco amarelo/branco visível; no tabuleiro as setas andam pelas cartas e Enter abre; V abre e fecha o painel Visual (Esc fecha); M som; L ler de novo; A–D, P, T, espaço e Ctrl+Z como antes."]
   ];
   var CH = "duelo-motor-testes-v1", marcados = {};

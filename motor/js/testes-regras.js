@@ -1,4 +1,4 @@
-/* Duelo de Saberes 2.0 · Testes automáticos do motor de regras (Fase 4)
+/* Duelo de Saberes 2.0 · Testes automáticos do motor de regras (Fase 4; partidas inteiras com os bancos reais na Fase 10)
    Cada teste monta uma partida, força a situação e confere o resultado.
    Roda em testes.html (navegador) e no Node: node js/testes-regras.js */
 
@@ -634,16 +634,195 @@
     return resultados;
   }
 
+  /* ================================================================
+     Fase 10 · Piloto: partidas inteiras com os bancos reais (dados/questoes/*.json).
+     bancos = { biologia: [...], quimica: [...] }
+     ================================================================ */
+  function rodarPiloto(R, bancos) {
+    var resultados = [], grupoAtual = "";
+    function grupo(nome) { grupoAtual = nome; }
+    function teste(nome, fn) {
+      try { fn(); resultados.push({ grupo: grupoAtual, nome: nome, ok: true }); }
+      catch (e) { resultados.push({ grupo: grupoAtual, nome: nome, ok: false, detalhe: e.message }); }
+    }
+    function igual(a, b, msg) { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error((msg || "") + " esperado " + JSON.stringify(b) + ", veio " + JSON.stringify(a)); }
+    function verdade(v, msg) { if (!v) throw new Error(msg || "condição falsa"); }
+    function semente(s) {
+      return function () {
+        s |= 0; s = s + 0x6D2B79F5 | 0;
+        var t = Math.imul(s ^ s >>> 15, 1 | s);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+    var CORES = ["vermelho", "azul", "verde", "ambar", "roxo", "turquesa"];
+    function nova(banco, nEq, seed, recentes, rodadas) {
+      var cfg = { rodadas: rodadas || 5, nivel: "calouro", equipes: [], recentes: recentes || [] };
+      for (var i = 0; i < nEq; i++) cfg.equipes.push({ nome: "E" + (i + 1), cor: CORES[i], forma: "circulo" });
+      return R.novaPartida(cfg, banco, semente(seed));
+    }
+    /* joga a partida inteira sozinha: acerta, erra, passa, aceita ou recusa o passe e gira as roletas ao acaso.
+       Guarda as questões de cada rodada (as 20 cartas) e as da morte súbita. */
+    function jogarTudo(m, seed, empatar) {
+      var rng = semente(seed), cartas = [], morte = [], guarda = 0, rodadaVista = 0;
+      while (m.estado.fase !== "fim" && guarda++ < 5000) {
+        var e = m.estado, f = e.fase, j = e.jogada;
+        if (e.rodada !== rodadaVista && f === "tabuleiro") { rodadaVista = e.rodada; e.cartas.forEach(function (c) { cartas.push(c.q); }); }
+        if (f === "tabuleiro") { var livres = []; e.cartas.forEach(function (c, i) { if (!c.usada) livres.push(i); }); m.abrirCarta(livres[Math.floor(rng() * livres.length)]); }
+        else if (f === "pergunta") {
+          if (j.etapa === "morte" && morte.indexOf(j.q) < 0) morte.push(j.q);
+          var x = rng(), certa = m.questao(j.q).correta;
+          var lista = j.aberta ? j.ordemOculta : [0, 1, 2, 3].filter(function (k) { return j.eliminadas.indexOf(k) < 0; });
+          var errada = lista.filter(function (k) { return k !== certa; })[0];
+          if (x < 0.12) m.tempoEsgotado();
+          else if (x < 0.25 && !m.passarBloqueado()) m.passar();
+          else m.responder(x < 0.62 ? certa : errada);
+        }
+        else if (f === "resultado") {
+          if (j.resultado.vaiParaPasse) m.abrirPasse(); else m.concluirJogada();
+        }
+        else if (f === "passe") {
+          if (j.passe.precisaSorteio && !j.passe.sorteado) m.sortearPasse();
+          else if (rng() < 0.15) m.recusarPasse(); else m.aceitarPasse();
+        }
+        else if (f === "roleta") m.girarPunicao();
+        else if (f === "fim-rodada") {
+          if (empatar && m.ehUltimaRodada()) { var o = e.pontos.map(function (p, i) { return i; }).sort(function (a, b) { return e.pontos[b] - e.pontos[a]; }); e.pontos[o[1]] = e.pontos[o[0]]; }
+          m.avancarDoFimDeRodada();
+        }
+        else if (f === "morte-intro" || f === "morte-leva") m.proximaMorte();
+        else throw new Error("fase inesperada " + f);
+      }
+      verdade(m.estado.fase === "fim", "a partida não terminou");
+      return { cartas: cartas, morte: morte };
+    }
+    function repetidas(lista) {
+      var visto = {}, rep = [];
+      lista.forEach(function (id) { if (visto[id]) rep.push(id); visto[id] = true; });
+      return rep;
+    }
+
+    Object.keys(bancos).forEach(function (disc) {
+      var banco = bancos[disc];
+      grupo("Piloto · " + disc);
+
+      teste("O banco do 1º ano tem 20 questões de cada valor (Calouro liberado)", function () {
+        R.VALORES.forEach(function (v) {
+          var n = banco.filter(function (x) { return x.serie === 1 && x.valor === v; }).length;
+          verdade(n >= R.MINIMO_POR_VALOR, v + ": só " + n);
+        });
+        var d = R.niveisDisponiveis(banco);
+        igual(d.calouro, true, "Calouro");
+        igual(d.estudioso, false, "Estudioso sem 2º ano");
+        igual(d.veterano, false, "Veterano sem 2º e 3º ano");
+      });
+
+      teste("Ids únicos e questões dentro dos limites do plano", function () {
+        igual(repetidas(banco.map(function (x) { return x.id; })), [], "ids repetidos");
+        banco.forEach(function (x) {
+          verdade(Array.from(x.enunciado).length <= 200, x.id + " enunciado longo");
+          igual(x.alternativas.length, 4, x.id);
+          x.alternativas.forEach(function (a) { verdade(Array.from(a).length <= 70, x.id + " alternativa longa"); });
+          verdade(x.correta >= 0 && x.correta <= 3, x.id + " correta");
+          verdade(R.VALORES.indexOf(x.valor) >= 0, x.id + " valor");
+        });
+      });
+
+      [2, 4, 6].forEach(function (nEq, k) {
+        teste("5 rodadas no Calouro com " + nEq + " equipes: 100 cartas, nenhuma questão repetida", function () {
+          var m = nova(banco, nEq, 100 + k), r = jogarTudo(m, 200 + k);
+          igual(r.cartas.length, 100, "cartas");
+          igual(repetidas(r.cartas), [], "repetidas");
+          R.VALORES.forEach(function (v) {
+            var n = r.cartas.filter(function (id) { return m.questao(id).valor === v; }).length;
+            igual(n, 20, "cartas de " + v);
+          });
+          verdade(r.cartas.every(function (id) { return m.questao(id).serie === 1; }), "só 1º ano no Calouro");
+        });
+      });
+
+      teste("Relatório: uma linha por carta jogada, com a saída da equipe e do passe", function () {
+        var m = nova(banco, 4, 7), r = jogarTudo(m, 8);
+        var reg = m.estado.registro.filter(function (x) { return !x.m; });
+        igual(reg.length, 100, "linhas");
+        igual(repetidas(reg.map(function (x) { return x.q; })), [], "questão registrada duas vezes");
+        reg.forEach(function (x) {
+          verdade(["acerto", "erro", "passou", "tempo"].indexOf(x.s) >= 0, "saída " + x.s);
+          if (x.s === "acerto") igual(x.p, null, "acertou e foi ao passe?");
+          else verdade(["acerto", "erro", "tempo", "recusado", "ninguem"].indexOf(x.p) >= 0, x.q + " passe " + x.p);
+          igual(x.v, m.questao(x.q).valor, "valor");
+        });
+        verdade(r.cartas.length === 100);
+      });
+
+      teste("Desfazer depois de concluir também apaga a linha do relatório", function () {
+        var m = nova(banco, 3, 11, [], 1);
+        m.abrirCarta(0); m.responder(m.questao(m.estado.jogada.q).correta); m.concluirJogada();
+        igual(m.estado.registro.length, 1);
+        m.desfazer();
+        igual(m.estado.registro.length, 0);
+        m.concluirJogada();
+        igual(m.estado.registro.length, 1, "refazer registra uma vez só");
+      });
+
+      teste("Morte súbita depois de 5 rodadas: não repete entre as empatadas e usa a de 500 vista há mais tempo", function () {
+        var m = nova(banco, 3, 21), r = jogarTudo(m, 22, true);
+        verdade(r.morte.length >= 2, "houve morte súbita");
+        igual(repetidas(r.morte), [], "a morte súbita repetiu entre levas");
+        var rodada1 = r.cartas.slice(0, 20);
+        verdade(rodada1.indexOf(r.morte[0]) >= 0, "a primeira da morte súbita deveria ser uma da 1ª rodada (a vista há mais tempo)");
+      });
+
+      teste("Morte súbita sem esgotar as de 500 (3 rodadas): só questões que ainda não saíram", function () {
+        var m = nova(banco, 2, 31, [], 3), r = jogarTudo(m, 32, true);
+        r.morte.forEach(function (id) { verdade(r.cartas.indexOf(id) < 0, id + " já tinha saído na partida"); });
+      });
+
+      teste("Segunda partida seguida no mesmo aparelho: de novo 100 questões sem repetir", function () {
+        var m1 = nova(banco, 4, 41); jogarTudo(m1, 42);
+        var m2 = nova(banco, 4, 43, m1.estado.usadas.slice(-300)), r2 = jogarTudo(m2, 44);
+        igual(repetidas(r2.cartas), [], "repetidas na 2ª partida");
+        igual(r2.cartas.length, 100);
+      });
+
+      teste("Partida de 2 rodadas e depois outra de 2: a segunda prefere as que ainda não saíram", function () {
+        var m1 = nova(banco, 4, 51, [], 2), r1 = jogarTudo(m1, 52);
+        var m2 = nova(banco, 4, 53, m1.estado.usadas.slice(-300), 2), r2 = jogarTudo(m2, 54);
+        var comum = r2.cartas.filter(function (id) { return r1.cartas.indexOf(id) >= 0; });
+        igual(comum, [], "repetiu da partida anterior");
+      });
+    });
+
+    grupo("Piloto · níveis");
+    teste("Banco vazio ou incompleto deixa o nível em breve", function () {
+      igual(R.niveisDisponiveis([]), { calouro: false, estudioso: false, veterano: false });
+      var b = (bancos.biologia || []).slice(1);
+      igual(R.nivelDisponivel("calouro", b), false, "faltando uma questão");
+    });
+    teste("Estudioso libera com 1º e 2º ano completos; Veterano precisa também do 3º", function () {
+      var base = bancos.biologia || [];
+      var com2 = base.concat(base.map(function (x) { return { id: x.id + "-s2", serie: 2, valor: x.valor }; }));
+      var d = R.niveisDisponiveis(com2);
+      igual([d.calouro, d.estudioso, d.veterano], [true, true, false]);
+      var com3 = com2.concat(base.map(function (x) { return { id: x.id + "-s3", serie: 3, valor: x.valor }; }));
+      igual(R.niveisDisponiveis(com3).veterano, true);
+    });
+    return resultados;
+  }
+
   if (typeof module !== "undefined" && module.exports) {
     module.exports = rodar;
+    module.exports.piloto = rodarPiloto;
     if (require.main === module) {
       var path = require("path");
       var R = require(path.join(__dirname, "regras.js"));
       var banco = require(path.join(__dirname, "..", "questoes", "teste-biologia-1.json"));
-      var res = rodar(R, banco), falhas = res.filter(function (r) { return !r.ok; });
+      var raizDados = path.join(__dirname, "..", "..", "dados", "questoes");
+      var bancos = { biologia: require(path.join(raizDados, "biologia-1.json")), quimica: require(path.join(raizDados, "quimica-1.json")) };
+      var res = rodar(R, banco).concat(rodarPiloto(R, bancos)), falhas = res.filter(function (r) { return !r.ok; });
       res.forEach(function (r) { console.log((r.ok ? "ok    " : "FALHOU") + "  [" + r.grupo + "] " + r.nome + (r.detalhe ? " → " + r.detalhe : "")); });
       console.log("\n" + (res.length - falhas.length) + " de " + res.length + " testes passaram.");
       process.exit(falhas.length ? 1 : 0);
     }
-  } else raiz.TESTES_REGRAS = rodar;
+  } else { raiz.TESTES_REGRAS = rodar; raiz.TESTES_PILOTO = rodarPiloto; }
 })(this);

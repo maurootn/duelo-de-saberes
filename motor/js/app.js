@@ -4,7 +4,10 @@
    fim-rodada, morte-intro, morte-leva, fim). Visual base da Fase 3. Cada tema fica em temas/<disciplina>/; os sons, em js/sons.js.
    Fase 6: avatares em camadas (js/avatares.js), criador na configuração, grito de guerra e turmas salvas.
    Fase 7: acessibilidade (alto contraste, tamanho do texto, reduzir animações, volume), legenda da voz
-   palavra a palavra e tempo extra por equipe (salvo na turma). Estilos em css/acessibilidade.css. */
+   palavra a palavra e tempo extra por equipe (salvo na turma). Estilos em css/acessibilidade.css.
+   Fase 10: piloto em sala. Disciplina e nível só aparecem com banco completo (os demais ficam "em breve");
+   cada jogada fica registrada no aparelho e a tela Relatório mostra a taxa de acerto por valor, com botão
+   para copiar os dados para a recalibração. Estilos em css/relatorio.css. */
 
 (function () {
   "use strict";
@@ -16,6 +19,12 @@
   /* turmas salvas: cada turma guarda suas equipes (nome, cor, forma, avatar e grito) para a aula seguinte */
   var CHAVE_TURMAS = "duelo-turmas-v1";
   var TURMAS_SUGERIDAS = ["1º B", "1º C", "1º D", "1º TMA", "3º C"];
+  /* relatório de acertos (Fase 10): as jogadas de cada partida, guardadas neste aparelho */
+  var CHAVE_RELATORIO = "duelo-relatorio-v1";
+  var MAX_PARTIDAS_RELATORIO = 150;
+  /* meta de acerto de cada valor, da rubrica do plano (Curadoria de dificuldade) */
+  var METAS = { 100: [80, 95], 200: [65, 80], 300: [50, 65], 400: [35, 50], 500: [20, 35] };
+  var MIN_POR_QUESTAO = 3;   // aberturas mínimas para a questão entrar na lista "fora da meta"
   var GRITO_MAX = 40;
   /* lista das disciplinas: quais estão prontas, se têm tema e quais arquivos de questões usam */
   var ARQUIVO_DISCIPLINAS = "disciplinas.json";
@@ -33,13 +42,15 @@
     modoJogo: "sala", disciplina: "biologia", nivel: "calouro", temaArena: D.temasArena[0],
     rodadas: 2, nEquipes: 4,
     equipes: D.equipesPadrao.map(function (e, i) { return { nome: e.nome, cor: e.cor, forma: e.forma, avatar: AV.padrao(i), grito: "" }; }),
-    tempoExtraLeitura: 0, depuracao: true, temaVisual: "disciplina",
+    tempoExtraLeitura: 0, depuracao: true, temaVisual: "disciplina", turma: "",
     chancesTesoura: R.FATIAS_TESOURA.map(function (f) { return f.chance; }),
     chancesPunicao: chancesPadraoPunicao()
   };
   var recentes = [];
   /* bancos: questões já carregadas, por disciplina. carregado: disciplinas, temas e questões prontos */
   var bancos = {}, carregado = false, erroBanco = null, disciplinaSalva = null;
+  /* níveis liberados de cada disciplina, calculados pelo banco carregado: { biologia: { calouro: true, ... } } */
+  var liberados = {};
   var motor = null;
   var tela = "inicio";
   var salvo = null; // partida salva encontrada ao abrir
@@ -52,7 +63,8 @@
     telaForcada: null,
     criador: null,        // índice da equipe aberta no criador de avatar
     criadorAba: "personagem", criadorEstado: "parado",
-    turmaMsg: ""
+    turmaMsg: "",
+    relDisc: "todas", relTurma: "todas", relNormais: false, relMsg: "", relApagar: false
   };
   var relogio = null, timerEspecial = null, animId = 0;
 
@@ -96,6 +108,33 @@
       if (motor) recentes = E().usadas.slice(-300);
       localStorage.setItem(CHAVE, JSON.stringify({ visual: visual, config: config, recentes: recentes, partida: p, disciplinaPartida: p ? (disciplinaSalva || config.disciplina) : null }));
     } catch (e) {}
+    gravarRelatorio();
+  }
+
+  /* ---------- relatório de acertos: armazenamento ----------
+     { v: 1, partidas: [{ id, data, disc, nivel, turma, nEq, reg: [linhas do motor] }] }
+     A partida em andamento é regravada quando o número de jogadas muda (o Desfazer também conta). */
+  var ultimoRelatorio = "";
+  function lerRelatorio() {
+    try {
+      var r = JSON.parse(localStorage.getItem(CHAVE_RELATORIO) || "null");
+      if (r && Array.isArray(r.partidas)) return r;
+    } catch (e) {}
+    return { v: 1, partidas: [] };
+  }
+  function gravarRel(r) { try { localStorage.setItem(CHAVE_RELATORIO, JSON.stringify(r)); return true; } catch (e) { return false; } }
+  function gravarRelatorio() {
+    if (!motor) return;
+    var e = E(), reg = e.registro || [], marca = e.id + "|" + reg.length;
+    if (marca === ultimoRelatorio) return;
+    var r = lerRelatorio(), k = -1;
+    r.partidas.forEach(function (x, i) { if (x.id === e.id) k = i; });
+    if (k < 0 && !reg.length) { ultimoRelatorio = marca; return; }
+    var item = { id: e.id, data: e.inicio || new Date().toISOString(), disc: disciplinaSalva || config.disciplina,
+      nivel: e.nivel, turma: e.turma || "", nEq: e.equipes.length, reg: reg };
+    if (k < 0) r.partidas.push(item); else r.partidas[k] = item;
+    if (r.partidas.length > MAX_PARTIDAS_RELATORIO) r.partidas = r.partidas.slice(-MAX_PARTIDAS_RELATORIO);
+    if (gravarRel(r)) ultimoRelatorio = marca;
   }
 
   /* ---------- carregamento: disciplinas, temas e questões ----------
@@ -126,12 +165,39 @@
       var questoes = D.disciplinas.filter(function (x) { return x.pronta; }).map(function (x) {
         return Promise.all(x.questoes.map(function (arq) {
           return buscarJson(arq).catch(function (e) { erroBanco = "Não consegui abrir " + arq + " (" + e.message + ")."; return []; });
-        })).then(function (listas) { bancos[x.id] = [].concat.apply([], listas); });
+        })).then(function (listas) { bancos[x.id] = [].concat.apply([], listas); liberados[x.id] = R.niveisDisponiveis(bancos[x.id]); });
       });
       return Promise.all(temas.concat(questoes));
     }).catch(function (e) {
       erroBanco = "Não consegui abrir as questões (" + e.message + "). Abra o jogo pelo endereço do GitHub Pages ou por um servidor local.";
-    }).then(function () { carregado = true; });
+    }).then(function () { carregado = true; corrigirEscolhas(); });
+  }
+  /* disciplina liberada: marcada como pronta e com banco completo em pelo menos um nível */
+  function discDisponivel(id) {
+    if (!prontaDisc(id)) return false;
+    if (!carregado) return true;
+    var l = liberados[id];
+    return !!l && Object.keys(l).some(function (n) { return l[n]; });
+  }
+  function nivelLiberado(disc, nivel) {
+    if (!carregado) return true;
+    return !!(liberados[disc] && liberados[disc][nivel]);
+  }
+  /* Arena: sem banco próprio até a Fase 11, fica "em breve" */
+  var ARENA_PRONTA = false;
+  function podeComecar() { return carregado && config.modoJogo === "sala" && discDisponivel(config.disciplina) && nivelLiberado(config.disciplina, config.nivel); }
+  /* escolhas salvas que deixaram de valer (disciplina ou nível em breve) voltam para a primeira liberada */
+  function corrigirEscolhas() {
+    if (!carregado) return;
+    if (config.modoJogo === "arena" && !ARENA_PRONTA) config.modoJogo = "sala";
+    if (!discDisponivel(config.disciplina)) {
+      var d = D.disciplinas.filter(function (x) { return discDisponivel(x.id); })[0];
+      if (d) config.disciplina = d.id;
+    }
+    if (!nivelLiberado(config.disciplina, config.nivel)) {
+      var n = D.niveis.filter(function (x) { return nivelLiberado(config.disciplina, x.id); })[0];
+      if (n) config.nivel = n.id;
+    }
   }
   /* temas carregados, na ordem do menu de disciplinas (os arquivos chegam em qualquer ordem) */
   function temasEmOrdem() {
@@ -197,7 +263,7 @@
   /* ---------- aparência ---------- */
   function aplicarVisual(t) {
     var b = document.body;
-    var emJogo = t !== "inicio" && t !== "config";
+    var emJogo = t !== "inicio" && t !== "config" && t !== "relatorio";
     b.dataset.tema = emJogo ? visual.tema : "palco";
     b.dataset.modo = visual.modo;
     b.dataset.fonte = visual.fontes[b.dataset.tema] || "a";
@@ -253,6 +319,7 @@
     switch (t) {
       case "inicio": html = telaInicio(); break;
       case "config": html = telaConfig(); break;
+      case "relatorio": html = telaRelatorio(); break;
       case "tabuleiro": html = telaTabuleiro(); break;
       case "pergunta": html = telaPergunta(false); break;
       case "resultado": html = E().jogada.resultado.vaiParaPasse && !E().jogada.oculta ? telaRumoAoPasse() : telaPergunta(true); break;
@@ -373,11 +440,12 @@
         '<div class="inicio-acoes">' +
           (salvo && carregado ? '<button class="botao botao-principal botao-enorme" data-acao="continuar-salva" data-foco>Continuar partida</button>' : '') +
           '<button class="botao ' + (salvo && carregado ? 'botao-contorno' : 'botao-principal botao-enorme') + '" data-acao="ir-config"' + (salvo && carregado ? '' : ' data-foco') + '>Nova partida</button>' +
+          '<button class="botao botao-contorno" data-acao="ir-relatorio">Relatório de acertos</button>' +
           '<a class="botao botao-contorno" href="testes.html">Lista de testes</a>' +
           '<a class="botao botao-contorno" href="avatares.html">Galeria de avatares</a>' +
         '</div>' +
       '</div>' +
-      '<footer class="inicio-rodape">Fase 7 · voz e acessibilidade · 20 questões de teste · Prof. Mauro Vinícius, Tanque Novo-BA</footer>' +
+      '<footer class="inicio-rodape">Fase 10 · piloto em sala · Biologia e Química, 1º ano (Calouro) · Prof. Mauro Vinícius, Tanque Novo-BA</footer>' +
     '</main>';
   }
 
@@ -395,7 +463,7 @@
         '<h2>Modo de jogo</h2>' +
         '<div class="opcoes opcoes-2" role="radiogroup" aria-label="Modo de jogo">' +
           opcao("modoJogo", "sala", "Sala de Aula", "Disciplina e nível do ensino médio") +
-          opcao("modoJogo", "arena", "Arena", "Tema livre de conhecimentos gerais") +
+          (ARENA_PRONTA ? opcao("modoJogo", "arena", "Arena", "Tema livre de conhecimentos gerais") : opcaoBreve("Arena", "Tema livre de conhecimentos gerais")) +
         '</div>' +
         '<h2 class="sub">Rodadas</h2>' +
         '<div class="contador" role="group" aria-label="Número de rodadas">' +
@@ -411,17 +479,18 @@
         '<h2>Disciplina</h2>' +
         '<div class="chips" role="radiogroup" aria-label="Disciplina">' +
           D.disciplinas.map(function (d) {
-            if (d.pronta === false) return '<button class="chip chip-breve" disabled aria-disabled="true" title="Em breve">' + esc(d.nome) + '<small>em breve</small></button>';
+            if (!discDisponivel(d.id)) return '<button class="chip chip-breve" disabled aria-disabled="true" title="Em breve">' + esc(d.nome) + '<small>em breve</small></button>';
             return chip("disciplina", d.id, d.nome);
           }).join("") +
         '</div>' +
-        '<p class="nota">Por enquanto, Biologia e Química têm 20 questões de teste cada (1º ano). Os bancos reais chegam na Fase 8.</p>' +
+        '<p class="nota">Piloto: Biologia e Química com 100 questões do 1º ano cada. Uma disciplina entra no menu quando tem banco completo de pelo menos um nível.</p>' +
       '</section>' +
       '<section class="bloco bloco-nivel">' +
         '<h2>Nível</h2>' +
         '<div class="opcoes opcoes-3" role="radiogroup" aria-label="Nível">' +
-          D.niveis.map(function (n) { return opcao("nivel", n.id, n.nome, n.series); }).join("") +
+          D.niveis.map(function (n) { return nivelLiberado(config.disciplina, n.id) ? opcao("nivel", n.id, n.nome, n.series) : opcaoBreve(n.nome, n.series); }).join("") +
         '</div>' +
+        '<p class="nota">Um nível abre quando cada série dele tem ' + R.MINIMO_POR_VALOR + ' questões de cada valor, o bastante para 5 rodadas sem repetir. Estudioso e Veterano chegam com os bancos de 2º e 3º ano.</p>' +
       '</section>';
     } else {
       h += '<section class="bloco bloco-largo">' +
@@ -516,7 +585,7 @@
       '</div>' +
       '<div class="config-rodape">' +
         '<span class="config-resumo">' + esc(nomeTema()) + ' · ' + config.rodadas + (config.rodadas > 1 ? ' rodadas' : ' rodada') + ' · ' + config.nEquipes + ' equipes</span>' +
-        '<button class="botao botao-principal botao-enorme" data-acao="comecar"' + (bancoAtual().length ? '' : ' disabled') + '>' + (!carregado ? 'Carregando questões…' : bancoAtual().length ? 'Começar partida' : 'Sem questões') + '</button>' +
+        '<button class="botao botao-principal botao-enorme" data-acao="comecar"' + (podeComecar() ? '' : ' disabled') + '>' + (!carregado ? 'Carregando questões…' : podeComecar() ? 'Começar partida' : 'Sem questões') + '</button>' +
       '</div>' +
     '</main>';
     if (ui.criador !== null) h += telaCriador();
@@ -534,6 +603,10 @@
     var on = config[campo] === valor;
     return '<button class="opcao' + (on ? " ativa" : "") + '" role="radio" aria-checked="' + on + '" data-acao="escolher" data-campo="' + campo + '" data-valor="' + esc(valor) + '">' +
       '<strong>' + esc(titulo) + '</strong><span>' + esc(texto) + '</span></button>';
+  }
+  /* opção que ainda não pode ser escolhida (sem banco completo) */
+  function opcaoBreve(titulo, texto) {
+    return '<button class="opcao opcao-breve" disabled aria-disabled="true" title="Em breve"><strong>' + esc(titulo) + ' <small>em breve</small></strong><span>' + esc(texto) + '</span></button>';
   }
   function chip(campo, valor, titulo) {
     var on = config[campo] === valor;
@@ -619,6 +692,7 @@
     lista.sort(function (x, y) { return x.nome.localeCompare(y.nome, "pt-BR", { numeric: true }); });
     ui.turmaMsg = gravarTurmas(lista) ? (existia ? "Turma " + nome + " atualizada com as " + config.nEquipes + " equipes atuais." : "Turma " + nome + " salva com " + config.nEquipes + " equipes.") : "Não deu para salvar neste aparelho (armazenamento bloqueado).";
     ui.turmaEscolhida = nome;
+    config.turma = nome;
   }
   function usarTurma() {
     var nome = ui.turmaEscolhida || (lerTurmas()[0] || {}).nome, t = lerTurmas().filter(function (x) { return x.nome === nome; })[0];
@@ -629,6 +703,7 @@
     config.nEquipes = Math.min(6, Math.max(2, Number(t.nEquipes) || 2));
     corrigirCores();
     ui.turmaNome = t.nome;
+    config.turma = t.nome;
     ui.turmaMsg = "Equipes da turma " + t.nome + " carregadas.";
   }
   function excluirTurma() {
@@ -738,17 +813,260 @@
     salvar();
   }
 
+  /* ================= relatório de acertos (Fase 10) =================
+     Taxa de acerto = acertos da equipe da vez ÷ vezes em que a questão foi aberta.
+     Passar e tempo esgotado contam como "não acertou". O passe aparece à parte e não entra na taxa. */
+  var NOMES_SAIDA = { acerto: "acertou", erro: "errou", passou: "passou", tempo: "tempo esgotado" };
+  function questaoPorId(id) {
+    var ks = Object.keys(bancos);
+    for (var i = 0; i < ks.length; i++) { var b = bancos[ks[i]]; for (var k = 0; k < b.length; k++) if (b[k].id === id) return b[k]; }
+    return null;
+  }
+  function nomeDisc(id) { if (id === "arena") return "Arena"; var d = D.disciplinas.filter(function (x) { return x.id === id; })[0]; return d ? d.nome : id; }
+  function nomeNivel(id) { var n = D.niveis.filter(function (x) { return x.id === id; })[0]; return n ? n.nome : id; }
+  /* jogada "normal": sem Tesoura, sem letras ocultas (Em Dobro depois dos 10 s), sem Às cegas e sem Contra o relógio */
+  function jogadaNormal(r) { return !r.t && !r.o && !r.c && !r.r; }
+  function partidasFiltradas(rel) {
+    return rel.partidas.filter(function (p) {
+      return (ui.relDisc === "todas" || p.disc === ui.relDisc) && (ui.relTurma === "todas" || (p.turma || "") === ui.relTurma);
+    });
+  }
+  function contadorVazio() { return { abertas: 0, acerto: 0, erro: 0, passou: 0, tempo: 0, passe: 0, pAcerto: 0, pErro: 0, pRecusa: 0, tesoura: 0, ocultas: 0, cegasRelogio: 0, especiais: 0, morte: 0 }; }
+  function somarLinha(c, r) {
+    c.abertas++;
+    if (c[r.s] !== undefined) c[r.s]++;
+    if (r.p && r.p !== "ninguem") {
+      c.passe++;
+      if (r.p === "acerto") c.pAcerto++;
+      else if (r.p === "recusado") c.pRecusa++;
+      else c.pErro++;
+    }
+    if (r.t) c.tesoura++;
+    if (r.o) c.ocultas++;
+    if (r.c || r.r) c.cegasRelogio++;
+    if (r.x) c.especiais++;
+    if (r.m) c.morte++;
+  }
+  function taxa(c) { return c.abertas ? Math.round(c.acerto / c.abertas * 100) : null; }
+  function situacao(t, valor) {
+    var m = METAS[valor];
+    if (t === null || !m) return "sem dados";
+    return t < m[0] ? "abaixo" : t > m[1] ? "acima" : "dentro";
+  }
+  function montarRelatorio() {
+    var rel = lerRelatorio(), partidas = partidasFiltradas(rel), porValor = {}, porQuestao = {}, total = 0;
+    R.VALORES.forEach(function (v) { porValor[v] = contadorVazio(); });
+    partidas.forEach(function (p) {
+      (p.reg || []).forEach(function (r) {
+        if (ui.relNormais && !jogadaNormal(r)) return;
+        if (!porValor[r.v]) return;
+        total++;
+        somarLinha(porValor[r.v], r);
+        if (!porQuestao[r.q]) porQuestao[r.q] = { id: r.q, valor: r.v, disc: p.disc, c: contadorVazio() };
+        somarLinha(porQuestao[r.q].c, r);
+      });
+    });
+    var questoes = Object.keys(porQuestao).map(function (k) { return porQuestao[k]; });
+    questoes.sort(function (a, b) { return a.valor - b.valor || (a.id < b.id ? -1 : 1); });
+    var turmas = [];
+    rel.partidas.forEach(function (p) { var t = p.turma || ""; if (turmas.indexOf(t) < 0) turmas.push(t); });
+    var discs = [];
+    rel.partidas.forEach(function (p) { if (discs.indexOf(p.disc) < 0) discs.push(p.disc); });
+    return { rel: rel, partidas: partidas, porValor: porValor, questoes: questoes, total: total, turmas: turmas, discs: discs };
+  }
+  function descricaoFiltro() {
+    return (ui.relDisc === "todas" ? "todas as disciplinas" : nomeDisc(ui.relDisc)) + " · " +
+      (ui.relTurma === "todas" ? "todas as turmas" : (ui.relTurma || "sem turma")) + " · " +
+      (ui.relNormais ? "só jogadas normais" : "todas as jogadas");
+  }
+  function dataBr(iso) {
+    var d = new Date(iso); if (isNaN(d)) return iso || "";
+    function z(n) { return (n < 10 ? "0" : "") + n; }
+    return z(d.getDate()) + "/" + z(d.getMonth() + 1) + "/" + d.getFullYear() + " " + z(d.getHours()) + "h" + z(d.getMinutes());
+  }
+  function chipRel(campo, valor, titulo) {
+    var on = ui[campo] === valor;
+    return '<button class="chip' + (on ? " ativa" : "") + '" role="radio" aria-checked="' + on + '" data-acao="rel-filtro" data-campo="' + campo + '" data-valor="' + esc(valor) + '">' + esc(titulo) + '</button>';
+  }
+  function linhaValor(v, c) {
+    var t = taxa(c), m = METAS[v], sit = situacao(t, v);
+    var rotulo = { dentro: "dentro da meta", abaixo: "abaixo da meta (mais difícil que o previsto)", acima: "acima da meta (mais fácil que o previsto)", "sem dados": "sem dados ainda" }[sit];
+    return '<div class="rel-valor rel-' + sit.replace(" ", "-") + '">' +
+      '<div class="rel-valor-topo"><b class="rel-selo">' + v + '</b>' +
+        '<span class="rel-taxa">' + (t === null ? "—" : t + "%") + '</span>' +
+        '<span class="rel-situacao">' + rotulo + (c.abertas && c.abertas < 10 ? ' · poucos dados' : '') + '</span></div>' +
+      '<div class="rel-trilho" role="img" aria-label="Taxa de acerto ' + (t === null ? "sem dados" : t + "%") + ', meta de ' + m[0] + ' a ' + m[1] + '%">' +
+        '<span class="rel-meta" style="left:' + m[0] + '%;width:' + (m[1] - m[0]) + '%"></span>' +
+        (t === null ? '' : '<span class="rel-barra" style="width:' + Math.max(t, 1) + '%"></span>') +
+      '</div>' +
+      '<p class="rel-conta">Meta ' + m[0] + '–' + m[1] + '% · ' + c.abertas + (c.abertas === 1 ? ' vez aberta' : ' vezes abertas') +
+        ' · <b>' + c.acerto + '</b> acertou · <b>' + c.erro + '</b> errou · <b>' + c.passou + '</b> passou' + (c.tempo ? ' · <b>' + c.tempo + '</b> tempo esgotado' : '') +
+        ' · <b>' + c.passe + '</b> foi ao passe' + (c.passe ? ' (' + c.pAcerto + ' acertou, ' + c.pErro + ' errou' + (c.pRecusa ? ', ' + c.pRecusa + ' recusou' : '') + ')' : '') + '</p>' +
+    '</div>';
+  }
+  function telaRelatorio() {
+    var r = montarRelatorio();
+    var fora = r.questoes.filter(function (x) { return x.c.abertas >= MIN_POR_QUESTAO && situacao(taxa(x.c), x.valor) !== "dentro"; });
+    fora.sort(function (a, b) {
+      function dist(x) { var t = taxa(x.c), m = METAS[x.valor]; return t < m[0] ? m[0] - t : t - m[1]; }
+      return dist(b) - dist(a);
+    });
+    var vazio = !r.rel.partidas.length;
+    var h = '<main class="tela config relatorio">' +
+      '<header class="barra">' +
+        '<button class="botao botao-contorno botao-pequeno" data-acao="ir-inicio">Voltar</button>' +
+        LOGO.completo("logo-barra") +
+        '<span class="barra-titulo">Relatório de acertos</span>' +
+      '</header>' +
+      '<div class="config-grade rel-grade">';
+    if (vazio) {
+      h += '<section class="bloco bloco-largo rel-vazio"><h2>Nada registrado ainda</h2>' +
+        '<p>Cada carta jogada neste aparelho entra aqui: a questão, se a equipe acertou, errou ou passou, e como foi o passe. Jogue uma partida e volte.</p>' +
+        '<p class="nota">Os dados ficam só neste aparelho e navegador. Para juntar turmas, jogue sempre no mesmo aparelho ou copie os dados de cada um.</p></section></div></main>';
+      return h;
+    }
+    h += '<section class="bloco bloco-largo">' +
+        '<div class="rel-filtros">' +
+          '<div><h3 class="mini-titulo">Disciplina</h3><div class="chips" role="radiogroup" aria-label="Disciplina">' + chipRel("relDisc", "todas", "Todas") +
+            r.discs.map(function (d) { return chipRel("relDisc", d, nomeDisc(d)); }).join("") + '</div></div>' +
+          '<div><h3 class="mini-titulo">Turma</h3><div class="chips" role="radiogroup" aria-label="Turma">' + chipRel("relTurma", "todas", "Todas") +
+            r.turmas.map(function (t) { return chipRel("relTurma", t, t || "Sem turma"); }).join("") + '</div></div>' +
+          '<div><h3 class="mini-titulo">Jogadas</h3>' +
+            '<button class="interruptor' + (ui.relNormais ? " ligado" : "") + '" role="switch" aria-checked="' + ui.relNormais + '" data-acao="rel-normais"><span class="interruptor-trilho"><span></span></span>Só jogadas normais</button>' +
+            '<p class="nota">Tira as que tiveram Tesoura, letras ocultas, Às cegas ou Contra o relógio, que mudam a dificuldade.</p></div>' +
+        '</div>' +
+        '<p class="rel-resumo"><b>' + r.partidas.length + '</b> ' + (r.partidas.length === 1 ? 'partida' : 'partidas') + ' · <b>' + r.total + '</b> ' + (r.total === 1 ? 'questão aberta' : 'questões abertas') + ' · <b>' + r.questoes.length + '</b> questões diferentes</p>' +
+      '</section>' +
+      '<section class="bloco bloco-largo">' +
+        '<div class="bloco-topo"><h2>Taxa de acerto por valor</h2>' +
+          '<div class="rel-acoes">' +
+            '<button class="botao botao-principal botao-pequeno" data-acao="rel-copiar"' + (r.total ? '' : ' disabled') + '>Copiar dados</button>' +
+            '<button class="botao botao-contorno botao-pequeno" data-acao="rel-baixar"' + (r.total ? '' : ' disabled') + '>Baixar .txt</button>' +
+          '</div></div>' +
+        (ui.relMsg ? '<p class="rel-msg" role="status">' + esc(ui.relMsg) + '</p>' : '') +
+        '<div class="rel-valores">' + R.VALORES.map(function (v) { return linhaValor(v, r.porValor[v]); }).join("") + '</div>' +
+        '<p class="nota"><span class="rel-legenda-meta"></span> faixa da meta do plano · Taxa = vezes em que a equipe da vez acertou ÷ vezes em que a questão foi aberta. Passar e tempo esgotado contam como não acerto. O passe aparece à parte e não entra na taxa.</p>' +
+      '</section>' +
+      '<section class="bloco bloco-largo">' +
+        '<h2>Questões fora da meta</h2>' +
+        (fora.length ?
+          '<p class="nota rel-nota-topo">Só as abertas ' + MIN_POR_QUESTAO + ' vezes ou mais, das mais distantes da meta para as mais próximas.</p>' +
+          '<ol class="rel-questoes">' + fora.slice(0, 40).map(function (x) {
+            var qq = questaoPorId(x.id), t = taxa(x.c), sit = situacao(t, x.valor);
+            return '<li class="rel-q rel-' + sit + '"><b class="rel-selo">' + x.valor + '</b>' +
+              '<span class="rel-q-texto"><strong>' + esc(x.id) + '</strong>' + (qq ? ' · ' + esc(qq.assunto) + '<span>' + esc(qq.enunciado) + '</span>' : '') + '</span>' +
+              '<span class="rel-q-taxa">' + t + '%<small>' + x.c.acerto + ' de ' + x.c.abertas + ' · ' + (sit === "abaixo" ? "mais difícil" : "mais fácil") + '</small></span></li>';
+          }).join("") + '</ol>' + (fora.length > 40 ? '<p class="nota">E mais ' + (fora.length - 40) + ' (todas estão nos dados copiados).</p>' : '')
+          : '<p class="nota rel-nota-topo">Nenhuma questão aberta ' + MIN_POR_QUESTAO + ' vezes ou mais ficou fora da meta' + (r.questoes.some(function (x) { return x.c.abertas >= MIN_POR_QUESTAO; }) ? '.' : ' (ainda faltam dados: cada questão precisa sair pelo menos ' + MIN_POR_QUESTAO + ' vezes).') + '</p>') +
+      '</section>' +
+      '<section class="bloco bloco-largo">' +
+        '<h2>Partidas registradas</h2>' +
+        '<p class="nota rel-nota-topo">Tire do relatório as partidas de teste, para não misturar com as da turma.</p>' +
+        '<ul class="rel-partidas">' + r.rel.partidas.slice().reverse().map(function (p) {
+          var noFiltro = r.partidas.indexOf(p) >= 0;
+          return '<li class="' + (noFiltro ? '' : 'fora-filtro') + '"><span><strong>' + esc(dataBr(p.data)) + '</strong> · ' + esc(nomeDisc(p.disc)) + ' · ' + esc(nomeNivel(p.nivel)) + ' · ' + esc(p.turma || "sem turma") + ' · ' + p.nEq + ' equipes · ' + (p.reg || []).length + ' jogadas</span>' +
+            '<button class="botao botao-contorno botao-pequeno" data-acao="rel-tirar" data-valor="' + esc(p.id) + '">Tirar</button></li>';
+        }).join("") + '</ul>' +
+        '<div class="rel-apagar">' + (ui.relApagar ?
+          '<span>Apagar todo o relatório deste aparelho? Não dá para desfazer.</span><button class="botao botao-principal botao-pequeno rel-perigo" data-acao="rel-apagar">Sim, apagar tudo</button><button class="botao botao-contorno botao-pequeno" data-acao="rel-cancelar">Cancelar</button>'
+          : '<button class="botao botao-contorno botao-pequeno" data-acao="rel-apagar">Apagar todo o relatório</button>') + '</div>' +
+      '</section>' +
+      '</div></main>';
+    return h;
+  }
+  function tirarPartida(id) {
+    var rel = lerRelatorio();
+    rel.partidas = rel.partidas.filter(function (p) { return p.id !== id; });
+    gravarRel(rel);
+    ultimoRelatorio = "";
+    ui.relMsg = "Partida tirada do relatório.";
+    var r = montarRelatorio();
+    if (ui.relDisc !== "todas" && r.discs.indexOf(ui.relDisc) < 0) ui.relDisc = "todas";
+    if (ui.relTurma !== "todas" && r.turmas.indexOf(ui.relTurma) < 0) ui.relTurma = "todas";
+  }
+  /* texto para colar no chat de recalibração: resumo por valor e uma linha por questão (separador ;) */
+  function textoRelatorio() {
+    var r = montarRelatorio(), L = [];
+    function cols(c) { return [c.abertas, c.acerto, c.erro, c.passou, c.tempo, c.passe, c.pAcerto, c.pErro, c.pRecusa].join(";"); }
+    L.push("DUELO DE SABERES 2.0 · RELATÓRIO DE ACERTOS");
+    L.push("Gerado em " + dataBr(new Date().toISOString()) + " · filtro: " + descricaoFiltro());
+    L.push("Partidas: " + r.partidas.length + " · questões abertas: " + r.total + " · questões diferentes: " + r.questoes.length);
+    L.push("Taxa = acertos da equipe da vez ÷ vezes aberta (passou e tempo esgotado contam como não acerto; o passe fica à parte).");
+    L.push("");
+    L.push("PARTIDAS");
+    L.push("data;disciplina;nivel;turma;equipes;jogadas");
+    r.partidas.forEach(function (p) { L.push([dataBr(p.data), nomeDisc(p.disc), nomeNivel(p.nivel), p.turma || "sem turma", p.nEq, (p.reg || []).length].join(";")); });
+    L.push("");
+    L.push("POR VALOR");
+    L.push("valor;abertas;acertou;errou;passou;tempo;foi_ao_passe;passe_acertou;passe_errou;passe_recusou;taxa;meta;situacao");
+    R.VALORES.forEach(function (v) {
+      var c = r.porValor[v], t = taxa(c);
+      L.push([v, cols(c), t === null ? "" : t + "%", METAS[v][0] + "-" + METAS[v][1] + "%", situacao(t, v)].join(";"));
+    });
+    L.push("");
+    L.push("POR QUESTÃO");
+    L.push("id;valor;assunto;abertas;acertou;errou;passou;tempo;foi_ao_passe;passe_acertou;passe_errou;passe_recusou;taxa;situacao;com_tesoura;com_letras_ocultas;cegas_ou_relogio;carta_especial;morte_subita");
+    r.questoes.forEach(function (x) {
+      var qq = questaoPorId(x.id), c = x.c, t = taxa(c);
+      L.push([x.id, x.valor, qq ? qq.assunto : "", cols(c), t === null ? "" : t + "%", c.abertas >= MIN_POR_QUESTAO ? situacao(t, x.valor) : "poucos dados",
+        c.tesoura, c.ocultas, c.cegasRelogio, c.especiais, c.morte].join(";"));
+    });
+    return L.join("\n");
+  }
+  function copiarRelatorio() {
+    var texto = textoRelatorio();
+    function ok() { ui.relMsg = "Dados copiados. Cole no chat de recalibração."; desenhar(); }
+    function manual() {
+      ui.relMsg = "";
+      desenhar();
+      var bloco = app.querySelector(".rel-valores");
+      if (!bloco) return;
+      var area = document.createElement("textarea");
+      area.className = "rel-texto"; area.readOnly = true; area.value = texto; area.setAttribute("aria-label", "Dados do relatório");
+      bloco.parentNode.insertBefore(area, bloco);
+      var msg = document.createElement("p"); msg.className = "rel-msg"; msg.setAttribute("role", "status");
+      msg.textContent = "Não consegui copiar sozinho: selecione o texto abaixo e copie (ou use Baixar .txt).";
+      area.parentNode.insertBefore(msg, area);
+      area.focus(); area.select();
+    }
+    function velho() {
+      try {
+        var t = document.createElement("textarea");
+        t.value = texto; t.setAttribute("readonly", ""); t.style.position = "fixed"; t.style.opacity = "0";
+        document.body.appendChild(t); t.select();
+        var deu = document.execCommand("copy");
+        document.body.removeChild(t);
+        if (deu) ok(); else manual();
+      } catch (e) { manual(); }
+    }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(texto).then(ok, velho);
+    else velho();
+  }
+  function baixarRelatorio() {
+    try {
+      var blob = new Blob([textoRelatorio()], { type: "text/plain;charset=utf-8" });
+      var a = document.createElement("a"), hoje = new Date();
+      a.href = URL.createObjectURL(blob);
+      a.download = "duelo-relatorio-" + hoje.getFullYear() + "-" + (hoje.getMonth() < 9 ? "0" : "") + (hoje.getMonth() + 1) + "-" + (hoje.getDate() < 10 ? "0" : "") + hoje.getDate() + ".txt";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+      ui.relMsg = "Arquivo baixado."; desenhar();
+    } catch (e) { ui.relMsg = "Este navegador não deixou baixar. Use Copiar dados."; desenhar(); }
+  }
+
   /* ---------- começo da partida ---------- */
   function comecarPartida() {
     var banco = bancoAtual();
-    if (!banco.length) return;
+    if (!banco.length || !podeComecar()) return;
     disciplinaSalva = config.modoJogo === "arena" ? "arena" : config.disciplina;
     visual.tema = temaDaPartida();
     motor = R.novaPartida({
       rodadas: config.rodadas, nivel: config.modoJogo === "sala" ? config.nivel : "calouro",
       equipes: equipesConfig(), tempoExtraLeitura: config.tempoExtraLeitura,
-      chancesTesoura: config.chancesTesoura, chancesPunicao: config.chancesPunicao, recentes: recentes
+      chancesTesoura: config.chancesTesoura, chancesPunicao: config.chancesPunicao, recentes: recentes,
+      inicio: new Date().toISOString()
     }, banco);
+    E().turma = config.turma || "";
     limparUi();
     tela = "jogo";
     salvo = null;
@@ -1585,6 +1903,7 @@
       '<div class="inicio-acoes' + (animar ? " esconde" : "") + '" data-depois>' +
         '<button class="botao botao-principal botao-enorme" data-acao="jogar-de-novo"' + (animar ? '' : ' data-foco') + '>Jogar de novo</button>' +
         '<button class="botao botao-contorno" data-acao="ir-config">Nova configuração</button>' +
+        '<button class="botao botao-contorno" data-acao="ir-relatorio">Relatório de acertos</button>' +
         '<button class="botao botao-contorno" data-acao="sair">Tela inicial</button>' +
       '</div>' +
       (animar ? botaoPular() : '') +
@@ -1757,12 +2076,26 @@
       case "sair": tela = "inicio"; motor = null; limparUi(); salvar(); desenhar(); break;
       case "continuar-salva":
         motor = R.retomar(salvo, bancoDe(disciplinaSalva || config.disciplina, disciplinaSalva === "arena" ? "arena" : "sala")); salvo = null; tela = "jogo"; limparUi();
+        if (!E().inicio) E().inicio = new Date().toISOString();
         if (E().jogada) E().jogada.pausado = true;
         if (E().fase === "roleta" && E().jogada.punicao) E().fase = "resultado";
         visual.tema = temaDaPartida();
         desenhar(); break;
       case "comecar": case "jogar-de-novo": comecarPartida(); break;
-      case "escolher": config[b.dataset.campo] = v; salvar(); desenhar(); break;
+      case "escolher": config[b.dataset.campo] = v; corrigirEscolhas(); salvar(); desenhar(); break;
+      case "ir-relatorio":
+        if (motor) { salvar(); motor = null; }   // só abre da tela inicial ou do pódio final
+        tela = "relatorio"; ui.relMsg = ""; ui.relApagar = false; limparUi(); desenhar(); window.scrollTo(0, 0);
+        break;
+      case "rel-filtro": ui[b.dataset.campo] = v; ui.relMsg = ""; desenhar(); break;
+      case "rel-normais": ui.relNormais = !ui.relNormais; ui.relMsg = ""; desenhar(); break;
+      case "rel-copiar": copiarRelatorio(); break;
+      case "rel-baixar": baixarRelatorio(); break;
+      case "rel-tirar": tirarPartida(v); desenhar(); break;
+      case "rel-apagar":
+        if (!ui.relApagar) { ui.relApagar = true; desenhar(); break; }
+        gravarRel({ v: 1, partidas: [] }); ultimoRelatorio = ""; ui.relApagar = false; ui.relMsg = "Relatório apagado neste aparelho."; desenhar(); break;
+      case "rel-cancelar": ui.relApagar = false; desenhar(); break;
       case "escolher-num": config[b.dataset.campo] = Number(v); salvar(); desenhar(); break;
       case "alternar-dep": config.depuracao = !config.depuracao; salvar(); desenhar(); break;
       case "chances-padrao":
