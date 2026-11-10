@@ -573,6 +573,52 @@
       av.base = "gota";
       igual(m.estado.equipes[0].avatar.base, "atomo", "a partida guarda uma cópia");
     });
+    grupo("Tempo extra por equipe");
+    function partidaExtra(extras) {
+      var cfg = { rodadas: 2, nivel: "calouro", equipes: extras.map(function (x, i) { return { nome: "E" + (i + 1), cor: CORES[i], forma: "circulo", tempoExtra: x }; }) };
+      return R.novaPartida(cfg, banco, semente(42));
+    }
+    function abrirDeTempo(m, t) {
+      var e = m.estado, i;
+      for (i = 0; i < 20; i++) if (!e.cartas[i].usada && m.questao(e.cartas[i].q).tempo === t) break;
+      m.dep.definirEspecial(i, null); m.abrirCarta(i);
+      return e.jogada;
+    }
+    teste("A equipe com +10 s tem 10 s a mais na pergunta dela", function () {
+      var m = partidaExtra([10, 0]);
+      igual(abrirDeTempo(m, 20).tempoTotal, 30);
+    });
+    teste("A equipe sem tempo extra fica com o tempo normal", function () {
+      var m = partidaExtra([0, 15]);
+      igual(abrirDeTempo(m, 20).tempoTotal, 20);
+    });
+    teste("Soma com o tempo extra de leitura geral", function () {
+      var cfg = { rodadas: 2, tempoExtraLeitura: 5, equipes: [{ nome: "A", tempoExtra: 15 }, { nome: "B" }] };
+      var m = R.novaPartida(cfg, banco, semente(42));
+      igual(abrirDeTempo(m, 20).tempoTotal, 40);
+    });
+    teste("No passe vale o tempo extra de quem recebe", function () {
+      var m = partidaExtra([0, 5]); abrir(m, null);
+      m.passar(); m.abrirPasse(); m.aceitarPasse();
+      igual(m.estado.jogada.tempoTotal, R.TEMPO_PASSE + 5);
+    });
+    teste("No passe, o extra de quem passou não conta", function () {
+      var m = partidaExtra([15, 0]); abrir(m, null);
+      m.passar(); m.abrirPasse(); m.aceitarPasse();
+      igual(m.estado.jogada.tempoTotal, R.TEMPO_PASSE);
+    });
+    teste("No Contra o relógio o tempo extra não vale (fica 10 s)", function () {
+      var m = partidaExtra([10, 10]); m.estado.contraRelogio[0] = true;
+      igual(abrirDeTempo(m, 20).tempoTotal, R.TEMPO_RELOGIO);
+    });
+    teste("Valor fora da lista (ou partida antiga sem o campo) vira 0", function () {
+      var m = partidaExtra([7, undefined]);
+      igual(m.estado.equipes[0].tempoExtra, 0);
+      igual(m.estado.equipes[1].tempoExtra, 0);
+      delete m.estado.equipes[0].tempoExtra;
+      igual(abrirDeTempo(R.retomar(m.estado, banco, semente(1)), 20).tempoTotal, 20);
+    });
+
     grupo("Níveis e banco");
     teste("As 20 questões de teste seguem os limites do plano", function () {
       igual(banco.length, 20);

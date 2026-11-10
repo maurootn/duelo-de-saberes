@@ -2,11 +2,11 @@
    Tudo é gerado por código (Web Audio): não há arquivos de áudio, então funciona offline e não pesa.
    Cada tema registra, no próprio arquivo (temas/<id>/tema.js), os sons do seu universo; o que o tema não define
    cai no conjunto "padrao" (especiais, marcador e roletas ficam sempre no padrão, iguais em todos os temas).
-   Uso: SONS.tocar("revelar"), SONS.definirTema("biologia"), SONS.ligar(false). */
+   Uso: SONS.tocar("revelar"), SONS.definirTema("biologia"), SONS.ligar(false), SONS.volume(0.4). */
 
 window.SONS = (function () {
   "use strict";
-  var ctx = null, saida = null, ligado = true, tema = "padrao", ruidoBuf = null;
+  var ctx = null, saida = null, ligado = true, tema = "padrao", ruidoBuf = null, volume = 1;  /* volume: 1 normal, 0.4 "mais baixos" (Fase 7) */
 
   function audio() {
     if (!ctx) {
@@ -15,7 +15,7 @@ window.SONS = (function () {
       try { ctx = new C(); } catch (e) { return null; }
       var comp = ctx.createDynamicsCompressor();
       saida = ctx.createGain();
-      saida.gain.value = 0.55;
+      saida.gain.value = 0.55 * volume;
       saida.connect(comp); comp.connect(ctx.destination);
     }
     if (ctx.state === "suspended") ctx.resume();
@@ -211,6 +211,7 @@ window.SONS = (function () {
     /* peças para os temas montarem seus sons */
     pecas: { nota: nota, sopro: sopro, bolha: bolha, sino: sino },
     ligar: function (v) { ligado = !!v; },
+    volume: function (v) { volume = Math.min(1, Math.max(0.05, Number(v) || 1)); if (saida) saida.gain.value = 0.55 * volume; },
     ligado: function () { return ligado; },
     eventos: function () { return Object.keys(CONJUNTOS.padrao); }
   };

@@ -1,0 +1,121 @@
+/* Duelo de Saberes 2.0 · Acessibilidade (Fase 7)
+   Vale para todos os temas, sem precisar mexer nos arquivos de cada disciplina:
+   1. legenda da voz (palavra em destaque no enunciado)
+   2. tempo extra por equipe (cartão da equipe na configuração)
+   3. tamanho do texto: html[data-texto="grande" | "maior"]
+   4. alto contraste: body[data-contraste="alto"] (fundo preto, texto branco, destaques amarelos, sem fundos de tema)
+   5. reduzir animações pela escolha do professor: body[data-movimento="reduzido"]
+      (repete o que os arquivos fazem com o "reduzir animações" do aparelho)
+   Tema novo: o fundo do tema já vem numa caixa .fundo-tema, que o alto contraste esconde. */
+
+/* ---------- caixa do fundo do tema: não muda o layout ---------- */
+.fundo-tema { display: contents; }
+
+/* ---------- 1. legenda da voz ---------- */
+.enunciado .pal, .legenda-teste .pal { border-radius: .22em; transition: background-color .12s, color .12s, box-shadow .12s; }
+body[data-legenda="sim"] .enunciado .pal.lendo,
+.legenda-teste .pal.lendo {
+  background: var(--acento); color: var(--sobre-acento);
+  box-shadow: 0 0 0 .12em var(--acento);
+  -webkit-text-fill-color: var(--sobre-acento);
+}
+.legenda-teste {
+  margin-top: .55rem; padding: .55rem .7rem; border-radius: .7rem;
+  border: .08rem dashed var(--borda); font-weight: 700; font-size: .92rem; line-height: 1.5;
+}
+
+/* ---------- 2. tempo extra por equipe ---------- */
+.equipe-extra { display: flex; align-items: center; flex-wrap: wrap; gap: .3rem; margin-top: .55rem; }
+.equipe-extra-rotulo { font-size: .78rem; font-weight: 700; color: var(--tinta-suave); margin-right: .2rem; }
+.chip.chip-mini { min-height: 2.1rem; padding: .2rem .6rem; font-size: .8rem; }
+.chip.ativa:focus-visible, .chip-mini:focus-visible { z-index: 1; }
+
+/* ---------- 3. tamanho do texto ---------- */
+/* os menus e o placar crescem pela fonte da página; enunciado e alternativas usam medidas da tela, então crescem por zoom */
+html[data-texto="grande"] { font-size: calc(clamp(15px, .5vw + .65vh + 6px, 28px) * 1.15); }
+html[data-texto="maior"] { font-size: calc(clamp(15px, .5vw + .65vh + 6px, 28px) * 1.3); }
+html[data-texto="grande"] .enunciado, html[data-texto="grande"] .alternativas, html[data-texto="grande"] .letras-ocultas { zoom: 1.12; }
+html[data-texto="maior"] .enunciado, html[data-texto="maior"] .alternativas, html[data-texto="maior"] .letras-ocultas { zoom: 1.25; }
+/* o painel flutuante usa medidas fixas: cresce junto */
+html[data-texto="grande"] #painel-visual { zoom: 1.12; }
+html[data-texto="maior"] #painel-visual { zoom: 1.25; }
+
+/* ---------- 4. alto contraste ---------- */
+/* :not(#…) aumenta a prioridade para vencer as cores de qualquer tema e da versão clara */
+body[data-contraste="alto"]:not(#ac1):not(#ac2) {
+  --fundo: #000000; --fundo-2: #000000;
+  --painel: #000000; --painel-2: #000000; --painel-solido: #000000;
+  --tinta: #FFFFFF; --tinta-suave: #FFFFFF;
+  --borda: #FFFFFF; --borda-forte: #FFE600;
+  --acento-claro: #FFE600; --acento: #FFE600; --acento-escuro: #FFE600; --sobre-acento: #000000;
+  --prata: #FFFFFF; --prata-escura: #FFFFFF;
+  --quente: #FFE600;
+  --verso-1: #000000; --verso-2: #000000; --verso-tinta: #FFE600;
+  --piso-1: #000000; --piso-2: #000000;
+  --luz: 255, 255, 255; --forca-luz: 0;
+  --certo: #00E676; --sobre-certo: #000000; --errado: #FF7070; --sobre-errado: #000000;
+  --ficha-traco: #FFFFFF;
+  --brilho: 0 0 0 transparent; --sombra: 0 0 0 transparent;
+  --titulo: linear-gradient(#FFE600, #FFE600);
+  background: #000000; color: #FFFFFF;
+}
+body[data-contraste="alto"] .cenario,
+body[data-contraste="alto"] .fundo-tema,
+body[data-contraste="alto"] .confete { display: none !important; }
+
+/* superfícies: preto chapado com borda branca (os temas usam degradês e texturas) */
+body[data-contraste="alto"]:not(#ac1) :is(.tela, .tabuleiro, .pergunta, .barra, .telao, .bloco, .sobre, .veredito, .equipe-cartao, .opcao, .chip, .alternativa,
+  .letra-oculta, .placar, .placar-item, .final-item, .degrau, .pv-caixa, .pv-opcao, .pv-botao, .criador, .criador-painel, .campo-select, input, select, .turmas, .botao-contorno, .botao-redondo) {
+  background: #000000 !important; background-image: none !important; color: #FFFFFF;
+  box-shadow: none !important; text-shadow: none !important;
+}
+body[data-contraste="alto"]:not(#ac1) :is(.barra, .telao, .bloco, .veredito, .equipe-cartao, .opcao, .chip, .alternativa, .letra-oculta, .placar-item, .final-item, .pv-caixa, .pv-opcao, .pv-botao, .campo-select, input, select, .botao-contorno, .botao-redondo) {
+  border: .14rem solid #FFFFFF !important;
+}
+body[data-contraste="alto"] .telao::before, body[data-contraste="alto"] .telao::after { display: none !important; }
+
+/* escolhido / ativo / principal: amarelo com texto preto */
+body[data-contraste="alto"]:not(#ac1) :is(.chip.ativa, .opcao.ativa, .pv-opcao.ativa, .botao-principal, .final-item.primeiro) {
+  background: #FFE600 !important; background-image: none !important; color: #000000 !important; border-color: #FFE600 !important;
+}
+body[data-contraste="alto"]:not(#ac1) :is(.chip.ativa, .opcao.ativa, .pv-opcao.ativa, .botao-principal, .final-item.primeiro) * { color: #000000 !important; }
+body[data-contraste="alto"] .letra { background: #FFE600 !important; color: #000000 !important; box-shadow: none !important; }
+body[data-contraste="alto"]:not(#ac1) .alternativa.certa { background: #00E676 !important; color: #000000 !important; border-color: #FFFFFF !important; }
+body[data-contraste="alto"]:not(#ac1) .alternativa.errada { background: #FF7070 !important; color: #000000 !important; border-color: #FFFFFF !important; }
+body[data-contraste="alto"] .alternativa.certa .letra, body[data-contraste="alto"] .alternativa.errada .letra { background: #000000 !important; color: #FFFFFF !important; }
+body[data-contraste="alto"] .alternativa.apagada { opacity: .55; }
+
+/* cartas: verso preto com número amarelo; frente amarela com o valor em preto; nada de desenho decorativo */
+body[data-contraste="alto"]:not(#ac1) .carta-verso { background: #000000 !important; border: .18rem solid #FFE600 !important; box-shadow: none !important; }
+body[data-contraste="alto"] .carta-verso::before, body[data-contraste="alto"] .carta-verso::after { display: none !important; }
+body[data-contraste="alto"]:not(#ac1) .carta-numero { color: #FFE600 !important; background: none !important; -webkit-text-fill-color: #FFE600; text-shadow: none !important; }
+body[data-contraste="alto"]:not(#ac1) .carta-frente { background: #FFE600 !important; border: .18rem solid #FFFFFF !important; box-shadow: none !important; }
+body[data-contraste="alto"]:not(#ac1) .carta-frente .carta-valor { color: #000000 !important; -webkit-text-fill-color: #000000; text-shadow: none !important; }
+body[data-contraste="alto"]:not(#ac1) .carta-usada { background: #000000 !important; border: .12rem dashed #FFFFFF !important; }
+body[data-contraste="alto"] .carta-valor-usado { color: #FFFFFF !important; opacity: .75 !important; }
+body[data-contraste="alto"] .carta.marcada .carta-verso,
+body[data-contraste="alto"] button.carta:hover .carta-verso { outline: .3rem solid #FFFFFF; outline-offset: .1rem; }
+
+/* cronômetro e textos metálicos */
+body[data-contraste="alto"] .crono-arco { filter: none !important; }
+body[data-contraste="alto"] .crono-numero { color: #FFFFFF !important; }
+body[data-contraste="alto"] .cronometro { filter: none !important; }
+body[data-contraste="alto"] :is(h1, h2, h3, .barra-titulo, .placar-titulo, .veredito-titulo, .passe-titulo) { filter: none !important; text-shadow: none !important; }
+body[data-contraste="alto"] .nota { color: #FFFFFF; }
+
+/* foco do teclado bem visível sobre o preto */
+body[data-contraste="alto"] :focus-visible { outline: .25rem solid #FFE600 !important; outline-offset: .18rem; box-shadow: 0 0 0 .5rem #000000 !important; }
+/* a palavra lida fica em amarelo com texto preto */
+body[data-contraste="alto"][data-legenda="sim"] .enunciado .pal.lendo,
+body[data-contraste="alto"] .legenda-teste .pal.lendo { background: #FFE600; color: #000000; -webkit-text-fill-color: #000000; box-shadow: 0 0 0 .12em #FFE600; }
+
+/* ---------- 5. reduzir animações (escolha do professor, mesmo que o aparelho não peça) ---------- */
+body[data-movimento="reduzido"] *, body[data-movimento="reduzido"] *::before, body[data-movimento="reduzido"] *::after { animation: none !important; transition-duration: .01ms !important; }
+body[data-movimento="reduzido"] .carta.virando .carta-giro { transform: none; }
+body[data-movimento="reduzido"] .carta.virando .carta-verso { visibility: hidden; }
+body[data-movimento="reduzido"] .carta.virando .carta-frente { transform: none; }
+body[data-movimento="reduzido"] .moedas, body[data-movimento="reduzido"] .flocos, body[data-movimento="reduzido"] .confete { display: none; }
+body[data-movimento="reduzido"] .trincas, body[data-movimento="reduzido"] .esp-gelo { opacity: 1; stroke-dashoffset: 0; }
+body[data-movimento="reduzido"] .carta.virando { transform: none; }
+body[data-movimento="reduzido"] .avatar, body[data-movimento="reduzido"] .avatar * { animation: none !important; }
+body[data-contraste="alto"]:not(#ac1) .carta-numero { border-color: #FFE600 !important; box-shadow: none !important; }

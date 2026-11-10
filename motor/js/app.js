@@ -2,7 +2,9 @@
    As regras ficam em regras.js; aqui só se desenha e se chama o motor.
    Telas: inicio → config → (fase do motor: tabuleiro, pergunta, resultado, passe, roleta,
    fim-rodada, morte-intro, morte-leva, fim). Visual base da Fase 3. Cada tema fica em temas/<disciplina>/; os sons, em js/sons.js.
-   Fase 6: avatares em camadas (js/avatares.js), criador na configuração, grito de guerra e turmas salvas. */
+   Fase 6: avatares em camadas (js/avatares.js), criador na configuração, grito de guerra e turmas salvas.
+   Fase 7: acessibilidade (alto contraste, tamanho do texto, reduzir animações, volume), legenda da voz
+   palavra a palavra e tempo extra por equipe (salvo na turma). Estilos em css/acessibilidade.css. */
 
 (function () {
   "use strict";
@@ -17,10 +19,16 @@
   var GRITO_MAX = 40;
   /* lista das disciplinas: quais estão prontas, se têm tema e quais arquivos de questões usam */
   var ARQUIVO_DISCIPLINAS = "disciplinas.json";
-  var REDUZIR = window.matchMedia("(prefers-reduced-motion: reduce)");
+  /* "reduzir animações": vale o que o aparelho pede ou a escolha da Acessibilidade (Fase 7) */
+  var MQ_REDUZIR = window.matchMedia("(prefers-reduced-motion: reduce)");
+  var REDUZIR = { get matches() { return visual.movimento === "reduzir" || MQ_REDUZIR.matches; } };
+  /* tempo extra por equipe: valores aprovados em 10/11/2026 */
+  var EXTRAS_EQUIPE = R.EXTRAS_EQUIPE || [0, 5, 10, 15];
 
   /* ---------- estado da tela ---------- */
-  var visual = { tema: "palco", modo: "escuro", fontes: {}, som: "sim", voz: "sim", vozVel: "1", vozNome: "" };
+  var visual = { tema: "palco", modo: "escuro", fontes: {}, som: "sim", voz: "sim", vozVel: "1", vozNome: "",
+    /* Fase 7 · acessibilidade (ficam no aparelho) */
+    contraste: "normal", texto: "normal", movimento: "aparelho", somVol: "1", vozVol: "1", legenda: "sim" };
   var config = {
     modoJogo: "sala", disciplina: "biologia", nivel: "calouro", temaArena: D.temasArena[0],
     rodadas: 2, nEquipes: 4,
@@ -72,7 +80,8 @@
       var e = lista[i] || {};
       return {
         nome: String(e.nome || p.nome).slice(0, 18), cor: e.cor || p.cor, forma: e.forma || p.forma,
-        avatar: AV.normalizar(e.avatar, i), grito: String(e.grito || "").slice(0, GRITO_MAX)
+        avatar: AV.normalizar(e.avatar, i), grito: String(e.grito || "").slice(0, GRITO_MAX),
+        tempoExtra: EXTRAS_EQUIPE.indexOf(Number(e.tempoExtra)) >= 0 ? Number(e.tempoExtra) : 0
       };
     });
   }
@@ -193,9 +202,14 @@
     b.dataset.modo = visual.modo;
     b.dataset.fonte = visual.fontes[b.dataset.tema] || "a";
     b.dataset.tela = t;
+    b.dataset.contraste = visual.contraste;
+    b.dataset.movimento = REDUZIR.matches ? "reduzido" : "normal";
+    b.dataset.legenda = visual.legenda;
+    document.documentElement.dataset.texto = visual.texto;
     SONS.definirTema(b.dataset.tema);
     SONS.ligar(visual.som === "sim");
-    VOZ.configurar({ ligada: visual.voz === "sim", velocidade: visual.vozVel, nome: visual.vozNome });
+    SONS.volume(visual.somVol);
+    VOZ.configurar({ ligada: visual.voz === "sim", velocidade: visual.vozVel, volume: visual.vozVol, nome: visual.vozNome });
   }
   /* tema em uso na tela (objeto de js/tema-*.js) ou null no Palco */
   function temaObj() { return TEMAS[document.body.dataset.tema] || null; }
@@ -318,9 +332,34 @@
     if (s && s.options.length !== VOZ.vozes().length + 1) s.outerHTML = seletorVoz();
   });
 
+  /* ---------- legenda: a palavra que a voz está lendo fica em destaque no próprio enunciado ---------- */
+  /* cada palavra vira um <span class="pal">, na mesma divisão que a voz usa (VOZ.dividir) */
+  function palavrasHtml(texto, idx) {
+    return VOZ.dividir(texto).map(function (p, k) {
+      return '<span class="pal' + (k === idx ? ' lendo' : '') + '" data-p="' + k + '">' + esc(p) + '</span>';
+    }).join(" ");
+  }
+  function enunciadoHtml(texto) {
+    var idx = visual.legenda === "sim" ? VOZ.palavraAtual(chaveLeitura()) : -1;
+    return palavrasHtml(texto, idx);
+  }
+  function marcarPalavra(alvo, idx) {
+    if (!alvo) return;
+    var antes = alvo.querySelector(".pal.lendo");
+    if (antes) antes.classList.remove("lendo");
+    if (idx < 0 || visual.legenda !== "sim") return;
+    var p = alvo.querySelector('.pal[data-p="' + idx + '"]');
+    if (p) p.classList.add("lendo");
+  }
+  VOZ.aoPalavra(function (chave, idx) {
+    if (chave === "teste") { marcarPalavra(document.querySelector(".legenda-teste"), idx); return; }
+    if (tela === "jogo" && motor && telaAtual() === "pergunta" && chave === chaveLeitura()) marcarPalavra(app.querySelector(".enunciado"), idx);
+  });
+  var FRASE_TESTE = "Olá, turma! Esta é a voz que vai ler as perguntas do Duelo de Saberes.";
+
   function cenario() {
     var t = temaObj();
-    if (t && t.fundo) return t.fundo();
+    if (t && t.fundo) return '<div class="fundo-tema">' + t.fundo() + '</div>';
     return '<div class="cenario" aria-hidden="true"><div class="holofotes"><i></i><i></i><i></i><i></i></div><div class="sanefa"></div><div class="cortina esq"></div><div class="cortina dir"></div><div class="piso"></div><div class="ribalta"></div></div>';
   }
 
@@ -338,7 +377,7 @@
           '<a class="botao botao-contorno" href="avatares.html">Galeria de avatares</a>' +
         '</div>' +
       '</div>' +
-      '<footer class="inicio-rodape">Fase 6 · avatares e equipes · 20 questões de teste · Prof. Mauro Vinícius, Tanque Novo-BA</footer>' +
+      '<footer class="inicio-rodape">Fase 7 · voz e acessibilidade · 20 questões de teste · Prof. Mauro Vinícius, Tanque Novo-BA</footer>' +
     '</main>';
   }
 
@@ -405,11 +444,11 @@
         '</div>' +
         blocoTurmas() +
         '<div class="equipes-grade">' + equipesConfig().map(cartaoEquipe).join("") + '</div>' +
-        '<p class="nota">Toque no avatar para abrir o criador: personagem, expressão, acessório, cor, traço e grito de guerra.</p>' +
+        '<p class="nota">Toque no avatar para abrir o criador: personagem, expressão, acessório, cor, traço e grito de guerra. O tempo extra vale em todas as perguntas da equipe, inclusive no passe (não no Contra o relógio), e não aparece no jogo. Ele é salvo junto com a turma.</p>' +
       '</section>' +
 
       '<section class="bloco bloco-largo">' +
-        '<h2>Visual e som</h2>' +
+        '<h2>Visual</h2>' +
         '<div class="regras-grade regras-grade-4">' +
           '<div><h3 class="mini-titulo">Tema da partida</h3>' +
             '<div class="chips" role="radiogroup" aria-label="Tema da partida">' + chip("temaVisual", "disciplina", "Tema da disciplina") + chip("temaVisual", "palco", "Palco") + '</div>' +
@@ -417,17 +456,37 @@
           '<div><h3 class="mini-titulo">Versão</h3>' +
             '<div class="chips" role="radiogroup" aria-label="Versão clara ou escura">' + chipVisual("modo", "escuro", "Escuro") + chipVisual("modo", "claro", "Sala clara") + '</div>' +
             '<p class="nota">Escuro para sala com pouca luz; Sala clara para projetor em sala iluminada.</p></div>' +
+          escolhaDeFontes() +
+        '</div>' +
+      '</section>' +
+
+      '<section class="bloco bloco-largo" id="acessibilidade">' +
+        '<h2>Acessibilidade, voz e som</h2>' +
+        '<div class="regras-grade regras-grade-4">' +
+          '<div><h3 class="mini-titulo">Contraste</h3>' +
+            '<div class="chips" role="radiogroup" aria-label="Contraste">' + chipVisual("contraste", "normal", "Normal") + chipVisual("contraste", "alto", "Alto contraste") + '</div>' +
+            '<p class="nota">Fundo preto, texto branco e destaques amarelos, sem os fundos animados do tema. As formas das equipes continuam valendo.</p></div>' +
+          '<div><h3 class="mini-titulo">Tamanho do texto</h3>' +
+            '<div class="chips" role="radiogroup" aria-label="Tamanho do texto">' + chipVisual("texto", "normal", "Normal") + chipVisual("texto", "grande", "Grande") + chipVisual("texto", "maior", "Maior") + '</div>' +
+            '<p class="nota">Aumenta o enunciado, as alternativas, o placar e os menus.</p></div>' +
+          '<div><h3 class="mini-titulo">Animações</h3>' +
+            '<div class="chips" role="radiogroup" aria-label="Animações">' + chipVisual("movimento", "aparelho", "Seguir o aparelho") + chipVisual("movimento", "reduzir", "Reduzir") + '</div>' +
+            '<p class="nota">' + (MQ_REDUZIR.matches ? 'Este aparelho já pede animações reduzidas.' : 'Reduzir tira a mitose, a deriva, os giros longos e o confete.') + '</p></div>' +
           '<div><h3 class="mini-titulo">Sons</h3>' +
             '<div class="chips" role="radiogroup" aria-label="Sons">' + chipVisual("som", "sim", "Ligados") + chipVisual("som", "nao", "Desligados") + '</div>' +
+            '<div class="chips" role="radiogroup" aria-label="Volume dos efeitos">' + chipVisual("somVol", "1", "Volume normal") + chipVisual("somVol", "0.4", "Mais baixos") + '</div>' +
             '<p class="nota">No jogo, a tecla M ou o botão do alto-falante liga e desliga.</p></div>' +
           '<div><h3 class="mini-titulo">Voz que lê as perguntas</h3>' +
             '<div class="chips" role="radiogroup" aria-label="Voz">' + chipVisual("voz", "sim", "Ligada") + chipVisual("voz", "nao", "Desligada") + '</div>' +
             '<div class="chips" role="radiogroup" aria-label="Velocidade da voz">' + chipVisual("vozVel", "0.85", "Lenta") + chipVisual("vozVel", "1", "Normal") + chipVisual("vozVel", "1.2", "Rápida") + '</div>' +
+            '<div class="chips" role="radiogroup" aria-label="Volume da voz">' + chipVisual("vozVol", "1", "Volume alto") + chipVisual("vozVol", "0.7", "Médio") + chipVisual("vozVol", "0.45", "Baixo") + '</div>' +
+            '<div class="chips" role="radiogroup" aria-label="Legenda">' + chipVisual("legenda", "sim", "Com legenda") + chipVisual("legenda", "nao", "Sem legenda") + '</div>' +
             seletorVoz() +
             '<button class="botao botao-contorno botao-pequeno" data-acao="testar-voz">Testar a voz</button>' +
-            '<p class="nota">Lê só o enunciado, assim que a pergunta abre; as alternativas nunca são lidas. No jogo, L lê de novo.</p></div>' +
-          escolhaDeFontes() +
+            '<p class="legenda-teste" aria-hidden="true">' + palavrasHtml(FRASE_TESTE, -1) + '</p>' +
+            '<p class="nota">Lê só o enunciado, assim que a pergunta abre; as alternativas nunca são lidas. A legenda destaca a palavra que está sendo lida. No jogo, L lê de novo.</p></div>' +
         '</div>' +
+        '<p class="nota">Estas escolhas ficam guardadas neste aparelho. No jogo, a tecla V (ou o botão Visual, no canto) abre um painel com elas. O tempo extra de cada equipe fica no cartão da equipe, acima.</p>' +
       '</section>' +
 
       '<section class="bloco bloco-largo">' +
@@ -524,6 +583,14 @@
           var on = eq.forma === f.id;
           return '<button class="forma-botao' + (on ? " ativa" : "") + '" role="radio" aria-checked="' + on + '" aria-label="' + f.nome + '" title="' + f.nome + '" data-acao="forma" data-equipe="' + i + '" data-valor="' + f.id + '">' +
             '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + f.d + '"/></svg></button>';
+        }).join("") +
+      '</div>' +
+      /* tempo extra da equipe (Fase 7): não aparece no jogo; o cronômetro da equipe só começa maior */
+      '<div class="equipe-extra" role="radiogroup" aria-label="Tempo extra da equipe ' + (i + 1) + ' em todas as perguntas">' +
+        '<span class="equipe-extra-rotulo">Tempo extra</span>' +
+        EXTRAS_EQUIPE.map(function (x) {
+          var on = (eq.tempoExtra || 0) === x;
+          return '<button class="chip chip-mini' + (on ? " ativa" : "") + '" role="radio" aria-checked="' + on + '" data-acao="tempo-extra" data-equipe="' + i + '" data-valor="' + x + '">' + (x ? "+" + x + " s" : "Não") + '</button>';
         }).join("") +
       '</div>' +
     '</div>';
@@ -728,7 +795,8 @@
     '</main>';
   }
   /* fundo próprio do tema no tabuleiro e na pergunta (o Palco usa só o degradê do CSS) */
-  function fundoTema() { var t = temaObj(); return t && t.fundo ? t.fundo() : ""; }
+  /* o fundo do tema vai numa caixa "fundo-tema" (display: contents): o alto contraste esconde qualquer fundo de tema */
+  function fundoTema() { var t = temaObj(); return t && t.fundo ? '<div class="fundo-tema">' + t.fundo() + '</div>' : ""; }
   function cartaHtml(c, i) {
     var dep = config.depuracao && ui.verCartas;
     if (c.usada) {
@@ -909,7 +977,7 @@
         '<div class="valor-selo" aria-label="Valendo ' + (valor === null ? "a morte súbita" : valor + " pontos") + '">' + rotuloValor + '</div>' +
       '</header>' +
       '<section class="pergunta-corpo">' +
-        '<div class="telao"><h1 class="enunciado">' + esc(q.enunciado) + '</h1></div>';
+        '<div class="telao"><h1 class="enunciado">' + enunciadoHtml(q.enunciado) + '</h1></div>';
 
     if (!r && j.aberta) h += letrasOcultas(j);
     else if (revelando) {
@@ -1559,6 +1627,21 @@
 
   /* ================= painel: visual e depuração ================= */
   function desenharPainel() {
+    /* redesenhar o painel não pode tirar o foco de quem usa só o teclado */
+    var f = document.activeElement, chaveF = f && painel.contains(f) && f.dataset ? [f.dataset.acao || "", f.dataset.campo || "", f.dataset.valor || "", f.dataset.dep || "", f.dataset.indice || ""].join("|") : null;
+    desenharPainelSo();
+    if (chaveF !== null) {
+      var alvo = Array.prototype.filter.call(painel.querySelectorAll("button, select, input"), function (b) { return [b.dataset.acao || "", b.dataset.campo || "", b.dataset.valor || "", b.dataset.dep || "", b.dataset.indice || ""].join("|") === chaveF; })[0];
+      (alvo || painel.querySelector(".pv-botao")).focus({ preventScroll: true });
+    }
+  }
+  function abrirPainel(abrir) {
+    ui.painelAberto = abrir;
+    desenharPainelSo();
+    var alvo = abrir ? painel.querySelector(".pv-caixa .pv-opcao.ativa, .pv-caixa button") : painel.querySelector(".pv-botao");
+    if (alvo) alvo.focus({ preventScroll: true });
+  }
+  function desenharPainelSo() {
     var emJogo = tela === "jogo" && motor;
     var dep = config.depuracao && emJogo;
     function grupo(titulo, campo, itens) {
@@ -1575,8 +1658,15 @@
           var on = (visual.fontes[visual.tema] || "a") === f.id;
           return '<button class="pv-opcao' + (on ? " ativa" : "") + '" aria-pressed="' + on + '" data-acao="fonte-tema" data-tema="' + visual.tema + '" data-valor="' + f.id + '">' + String.fromCharCode(65 + k) + " · " + esc(f.nome) + '</button>';
         }).join("") + '</div></fieldset>' : "") +
+      grupo("Contraste", "contraste", [["normal", "Normal"], ["alto", "Alto contraste"]]) +
+      grupo("Tamanho do texto", "texto", [["normal", "Normal"], ["grande", "Grande"], ["maior", "Maior"]]) +
+      grupo("Animações", "movimento", [["aparelho", "Seguir o aparelho"], ["reduzir", "Reduzir"]]) +
       grupo("Sons", "som", [["sim", "Ligados"], ["nao", "Desligados"]]) +
+      grupo("Volume dos efeitos", "somVol", [["1", "Normal"], ["0.4", "Mais baixos"]]) +
       grupo("Voz", "voz", [["sim", "Ligada"], ["nao", "Desligada"]]) +
+      grupo("Velocidade da voz", "vozVel", [["0.85", "Lenta"], ["1", "Normal"], ["1.2", "Rápida"]]) +
+      grupo("Volume da voz", "vozVol", [["1", "Alto"], ["0.7", "Médio"], ["0.45", "Baixo"]]) +
+      grupo("Legenda da voz", "legenda", [["sim", "Com legenda"], ["nao", "Sem legenda"]]) +
       '<fieldset class="pv-grupo"><legend>Ouvir os sons do tema</legend><div class="pv-opcoes pv-linha">' +
         [["revelar", "Revelar"], ["acertar", "Acertar"], ["errar", "Errar"], ["tique", "Últimos 5 s"], ["tempo", "Tempo esgotado"], ["passe", "Passe"], ["foco", "Sorteio do passe"], ["escolhida", "Sorteada"],
           ["marcador", "Marcador das cartas"], ["catraca", "Roleta girando"], ["esp-congelou", "Congelou!"], ["esp-tudo", "Tudo ou Nada"], ["esp-dobro", "Em Dobro"], ["esp-tesoura", "Tesoura"],
@@ -1683,6 +1773,7 @@
       case "n-equipes": config.nEquipes = Math.min(6, Math.max(2, config.nEquipes + Number(v))); corrigirCores(); salvar(); desenhar(); break;
       case "cor": config.equipes[Number(b.dataset.equipe)].cor = v; salvar(); desenhar(); break;
       case "forma": config.equipes[Number(b.dataset.equipe)].forma = v; salvar(); desenhar(); break;
+      case "tempo-extra": config.equipes[Number(b.dataset.equipe)].tempoExtra = Number(v) || 0; salvar(); desenhar(); break;
       case "abrir-criador": ui.criador = Number(b.dataset.equipe); ui.criadorEstado = "parado"; ui.criadorFoco = b.dataset.equipe; desenhar(); break;
       case "fechar-criador": fecharCriador(); break;
       case "criador-equipe": ui.criador = Number(v); desenhar(); break;
@@ -1727,12 +1818,15 @@
       case "avancar-rodada": motor.avancarDoFimDeRodada(); depois(); break;
       case "proxima-morte": motor.proximaMorte(); depois(); break;
 
-      case "painel": ui.painelAberto = !ui.painelAberto; desenharPainel(); break;
+      case "painel": abrirPainel(!ui.painelAberto); break;
       case "visual":
         visual[b.dataset.campo] = v; salvar();
         /* trocar o tema muda o desenho da tela; modo, fonte e som só trocam variáveis */
         if ((b.dataset.campo === "tema" || tela === "config") && !ui.sorteando && ui.revelando === null && !ui.giro) desenhar();
-        else { aplicarVisual(telaAtual()); desenharPainel(); trocarBotaoSom(); }
+        else {
+          aplicarVisual(telaAtual()); desenharPainel(); trocarBotaoSom();
+          if (b.dataset.campo === "legenda" && telaAtual() === "pergunta") marcarPalavra(app.querySelector(".enunciado"), VOZ.palavraAtual(chaveLeitura()));
+        }
         if (b.dataset.campo === "som" && v === "sim") som("foco");
         break;
       case "som": alternarSom(); break;
@@ -1743,7 +1837,7 @@
       case "ler": if (telaAtual() === "pergunta") { VOZ.configurar({ ligada: true }); lerPergunta(chaveLeitura()); VOZ.configurar({ ligada: visual.voz === "sim" }); } break;
       case "testar-voz":
         VOZ.configurar({ ligada: true });
-        VOZ.ler(["Olá, turma! Esta é a voz que vai ler as perguntas do Duelo de Saberes."], "teste");
+        VOZ.ler([FRASE_TESTE], "teste");
         VOZ.configurar({ ligada: visual.voz === "sim" });
         break;
       case "ouvir": SONS.ligar(true); som(v); SONS.ligar(visual.som === "sim"); break;
@@ -1829,8 +1923,35 @@
   document.addEventListener("keydown", function (ev) {
     if (ev.key === "Escape" && tela === "config" && ui.criador !== null) { ev.preventDefault(); fecharCriador(); return; }
     if (ev.target.matches("input, textarea, select")) return;
-    if (ev.key === "Escape" && ui.painelAberto) { ui.painelAberto = false; desenharPainel(); return; }
+    if (ev.key === "Escape" && ui.painelAberto) { abrirPainel(false); return; }
+    /* V abre e fecha o painel com o visual e a acessibilidade, em qualquer tela */
+    if (ev.key.toLowerCase() === "v" && !ev.ctrlKey && !ev.metaKey && !ev.altKey && !(tela === "config" && ui.criador !== null)) { ev.preventDefault(); abrirPainel(!ui.painelAberto); return; }
     if (!motor || tela !== "jogo") return;
+    /* setas andam pelas cartas do tabuleiro (Enter ou espaço abre a carta em foco) */
+    if (/^Arrow/.test(ev.key) && telaAtual() === "tabuleiro" && !ui.sorteando && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
+      var cartas = Array.prototype.slice.call(app.querySelectorAll("button.carta:not(:disabled)"));
+      if (cartas.length) {
+        ev.preventDefault();
+        var atualC = cartas.indexOf(document.activeElement);
+        if (atualC < 0) { cartas[0].focus(); return; }
+        /* colunas = cartas na mesma linha da primeira */
+        var pr = cartas[atualC].getBoundingClientRect(), alvoC = null;
+        if (ev.key === "ArrowRight") alvoC = cartas[Math.min(cartas.length - 1, atualC + 1)];
+        else if (ev.key === "ArrowLeft") alvoC = cartas[Math.max(0, atualC - 1)];
+        else {
+          /* para cima ou para baixo: a carta mais próxima na linha vizinha (cartas usadas não recebem foco) */
+          var desce = ev.key === "ArrowDown", melhor = Infinity;
+          cartas.forEach(function (c) {
+            var r2 = c.getBoundingClientRect(), dy = r2.top - pr.top;
+            if (desce ? dy < 4 : dy > -4) return;
+            var d = Math.abs(dy) * 4 + Math.abs(r2.left - pr.left);
+            if (d < melhor) { melhor = d; alvoC = c; }
+          });
+        }
+        if (alvoC) alvoC.focus();
+        return;
+      }
+    }
     if (ev.key.toLowerCase() === "m" && !ev.ctrlKey && !ev.metaKey && !ev.altKey) { alternarSom(); return; }
     if (ev.key.toLowerCase() === "l" && !ev.ctrlKey && !ev.metaKey && !ev.altKey && telaAtual() === "pergunta") { ev.preventDefault(); VOZ.configurar({ ligada: true }); lerPergunta(chaveLeitura()); VOZ.configurar({ ligada: visual.voz === "sim" }); return; }
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "z") { ev.preventDefault(); desfazer(); return; }

@@ -101,7 +101,7 @@
       nivel: cfg.nivel || "calouro",
       tempoExtraLeitura: cfg.tempoExtraLeitura || 0,
       /* avatar e grito de guerra vão junto (Fase 6); o motor não usa, só guarda para a interface */
-      equipes: cfg.equipes.map(function (e) { return { nome: e.nome, cor: e.cor, forma: e.forma, avatar: e.avatar ? JSON.parse(JSON.stringify(e.avatar)) : null, grito: e.grito || "" }; }),
+      equipes: cfg.equipes.map(function (e) { return { nome: e.nome, cor: e.cor, forma: e.forma, avatar: e.avatar ? JSON.parse(JSON.stringify(e.avatar)) : null, grito: e.grito || "", tempoExtra: extraValido(e.tempoExtra) }; }),
       pontos: zeros(n),
       semTurno: zeros(n),       // quantos turnos a equipe ainda vai pular
       tesoura: falsos(n),       // poder guardado
@@ -130,6 +130,11 @@
     return m;
   }
 
+  /* tempo extra por equipe (Fase 7): 0, 5, 10 ou 15 s em todas as perguntas da equipe,
+     inclusive no passe e na morte súbita; não vale no Contra o relógio */
+  var EXTRAS_EQUIPE = [0, 5, 10, 15];
+  function extraValido(x) { x = Number(x) || 0; return EXTRAS_EQUIPE.indexOf(x) >= 0 ? x : 0; }
+
   function zeros(n) { var a = []; for (var i = 0; i < n; i++) a.push(0); return a; }
   function falsos(n) { var a = []; for (var i = 0; i < n; i++) a.push(false); return a; }
 
@@ -148,6 +153,8 @@
     function n() { return E().equipes.length; }
     function q(id) { for (var i = 0; i < m.banco.length; i++) if (m.banco[i].id === id) return m.banco[i]; return null; }
     m.questao = q;
+    function extraEquipe(i) { var eq = E().equipes[i]; return eq ? extraValido(eq.tempoExtra) : 0; }
+    m.extraEquipe = extraEquipe;
 
     /* ---------- desfazer ---------- */
     function guardar() {
@@ -227,7 +234,7 @@
       var cegas = e.asCegas[equipe], relogio = e.contraRelogio[equipe];
       e.asCegas[equipe] = false;
       e.contraRelogio[equipe] = false;
-      var tempo = relogio ? TEMPO_RELOGIO : (questao.tempo || 20) + e.tempoExtraLeitura;
+      var tempo = relogio ? TEMPO_RELOGIO : (questao.tempo || 20) + e.tempoExtraLeitura + extraEquipe(equipe);
       var esp = c.especial;
       e.avisos = [];
       e.jogada = {
@@ -448,8 +455,8 @@
       j.ordemOculta = embaralhar([0, 1, 2, 3], m.rng);
       j.oculta = false;
       j.escolhida = null;
-      j.tempoTotal = TEMPO_PASSE;
-      j.restante = TEMPO_PASSE;
+      j.tempoTotal = TEMPO_PASSE + extraEquipe(j.passe.equipe);
+      j.restante = j.tempoTotal;
       j.pausado = false;
       j.somemEm = null;
       j.resultado = null;
@@ -629,7 +636,7 @@
       if (!livres.length) { ms.usadas = []; livres = de500; }
       var questao = livres[Math.floor(m.rng() * livres.length)];
       ms.usadas.push(questao.id);
-      var tempo = (questao.tempo || 20) + e.tempoExtraLeitura;
+      var tempo = (questao.tempo || 20) + e.tempoExtraLeitura + extraEquipe(eq);
       e.jogada = {
         carta: -1, q: questao.id, valor: 500, especial: null, equipe: eq, etapa: "morte",
         ordem: embaralhar([0, 1, 2, 3], m.rng), eliminadas: [], aberta: false, ordemOculta: null, oculta: false, cegas: false, relogio: false,
@@ -721,7 +728,7 @@
   }
 
   var Regras = {
-    novaPartida: novaPartida, retomar: retomar,
+    novaPartida: novaPartida, retomar: retomar, EXTRAS_EQUIPE: EXTRAS_EQUIPE,
     ESPECIAIS: ESPECIAIS, FATIAS_TESOURA: FATIAS_TESOURA, FATIAS_PUNICAO: FATIAS_PUNICAO, NIVEIS: NIVEIS,
     VALORES: VALORES, TEMPO_PASSE: TEMPO_PASSE, TEMPO_RELOGIO: TEMPO_RELOGIO, DOBRO_SOMEM: DOBRO_SOMEM, CEGAS_SOMEM: CEGAS_SOMEM,
     tempoLeitura: tempoLeitura, sortearPeso: sortearPeso
