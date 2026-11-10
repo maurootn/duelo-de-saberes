@@ -86,25 +86,27 @@
 
   /* ---------- conferência manual ---------- */
   var ITENS = [
-    ["Carta e valor", "A carta escolhida gira e mostra o valor antes da pergunta. Sortear carta escolhe uma ao acaso."],
+    ["Carta e valor", "A carta escolhida gira e mostra o valor antes da pergunta."],
+    ["Sorteio com marcador", "Sortear carta: um marcador percorre as cartas restantes, vai desacelerando, pisca na sorteada e só então ela vira."],
     ["Animação de cada especial", "Depuração → Cartas desta rodada → escolha Congelou, Tudo ou Nada, Em Dobro ou Tesoura numa carta e abra. Congelou trinca e fica azul; Tudo ou Nada pisca em alarme com a borda em fogo; Em Dobro brilha com chuva de moedas; Tesoura corta a carta ao meio."],
     ["Armadilha bloqueia o passe", "Em Congelou e Tudo ou Nada o botão aparece como \"Passar bloqueado\" e a tecla P não faz nada. Deixe o tempo acabar (Depuração → Esgotar o tempo): conta como erro."],
     ["Congelou no placar", "Erre um Congelou: a equipe fica azul com a marca \"sem turno\" e, na vez dela, o tabuleiro avisa que foi pulada."],
-    ["Em Dobro", "Aparece \"as alternativas somem em … s\"; ao zerar, as alternativas somem e surgem Acertou / Errou. O selo mostra o valor × 2."],
+    ["Em Dobro", "Aparece \"as alternativas somem em … s\"; ao zerar, sobram só as letras, em ordem nova. O selo mostra o valor × 2."],
+    ["Letras ocultas", "Em Dobro depois dos 10 s, Às cegas e passe: tocando na letra que a equipe disse, a escolhida vira primeiro e mostra o conteúdo; depois viram as outras e o app dá ou tira os pontos sozinho. Se a questão for ao passe, só a escolhida é revelada."],
     ["Tesoura", "Acerte a carta Tesoura: o ícone aparece no placar. Na próxima pergunta da equipe, Usar Tesoura (ou T) gira a roleta e risca as alternativas eliminadas. Force 1, 2 ou 3 na Depuração."],
     ["Resposta em segredo", "Errou ou passou: a tela não mostra a resposta certa e leva ao passe."],
     ["Passe com sorteio", "Com 3 ou mais equipes, a roleta das equipes gira e para em quem recebe. Equipe sem turno não aparece na roleta. Force a equipe na Depuração."],
     ["Passe direto", "Com 2 equipes, a outra recebe direto, sem roleta."],
-    ["Passe aceito", "A pergunta volta sem alternativas, com 10 s. Espiar resposta mostra a certa só para o professor. Acertou soma o valor + 50%."],
+    ["Passe aceito", "A pergunta volta só com as letras, embaralhadas, e 10 s. Acertou soma o valor + 50%; errou revela as alternativas e leva à roleta de punição."],
     ["Roleta de punição", "Errou no passe: a roleta gira, para na fatia e mostra o efeito. Force cada uma das 8 fatias e confira o placar e as marcas."],
     ["Ajuda ao lanterna", "Com uma equipe claramente em último, force Ajuda ao lanterna: a última ganha a metade. Se quem errou é a última, vira Meio estrago."],
     ["Às cegas e Contra o relógio", "Depois da punição, as marcas aparecem no placar; a próxima pergunta da equipe vem sem alternativas ou com 10 s."],
     ["Desfazer", "Desfazer (ou Ctrl+Z) volta uma decisão por vez: resposta, passe, roleta e até a carta aberta por engano. Volta com o cronômetro pausado."],
-    ["Pódio parcial", "Ao fim de cada rodada (Depuração → Terminar a rodada), aparece o ranking com os pontos da rodada e quem subiu ou caiu."],
+    ["Pódio parcial", "Ao fim de cada rodada, as barras crescem juntas na mesma velocidade (quem fez mais pontos cresce por mais tempo); depois a lista se reordena e mostra posições, pontos da rodada e quem subiu ou caiu."],
     ["Morte súbita", "Na última rodada, Depuração → Empatar os dois primeiros → Terminar a rodada. Cada empatada responde uma de 500, sem passe e sem especiais, até sobrar uma."],
-    ["Pódio final", "Troféu no 1º lugar, degraus, trajetória do placar carta a carta e lista completa com mais de 3 equipes."],
+    ["Pódio final", "Sobe o 3º, depois o 2º e por último o campeão, com os pontos contando; troféu e confete no 1º. Em seguida o gráfico da trajetória se forma ponto a ponto. Pular animação mostra tudo de uma vez."],
     ["Partida salva", "Recarregue a página no meio da partida: a tela inicial oferece Continuar partida, com o cronômetro pausado."],
-    ["Teclado", "A–D ou 1–4 respondem, S e N julgam a resposta aberta, P passa, T usa a Tesoura, espaço pausa, Ctrl+Z desfaz."],
+    ["Teclado", "A–D ou 1–4 respondem (também as letras ocultas), P passa, T usa a Tesoura, espaço pausa, Ctrl+Z desfaz."],
     ["Telas", "Projetor 16:9, tablet e celular: tabuleiro, pergunta, passe, roletas e pódios cabem sem rolar para o lado."],
     ["Reduzir animações", "Com \"reduzir movimento\" ligado no aparelho, as animações ficam curtas e as roletas param quase na hora."]
   ];

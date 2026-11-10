@@ -30,13 +30,13 @@
   var salvo = null; // partida salva encontrada ao abrir
 
   var ui = {
-    placarAberto: false, painelAberto: false, verCartas: false, espiar: false,
+    placarAberto: false, painelAberto: false, verCartas: false, revelacaoVista: false, sorteando: false, animado: null,
     revelando: null,      // índice da carta virando
     especial: null,       // { tipo, valor } animação do especial
     giro: null,           // roleta girando
     telaForcada: null
   };
-  var relogio = null, timerEspecial = null;
+  var relogio = null, timerEspecial = null, animId = 0;
 
   function chancesPadraoPunicao() { var o = {}; R.FATIAS_PUNICAO.forEach(function (f) { o[f.id] = f.chance; }); return o; }
   function E() { return motor.estado; }
@@ -122,6 +122,8 @@
 
   function desenhar() {
     pararRelogio();
+    animId++;
+    ui.sorteando = false;
     var t = telaAtual();
     aplicarVisual(t);
     var html = "";
@@ -130,9 +132,9 @@
       case "config": html = telaConfig(); break;
       case "tabuleiro": html = telaTabuleiro(); break;
       case "pergunta": html = telaPergunta(false); break;
-      case "resultado": html = E().jogada.resultado.vaiParaPasse ? telaRumoAoPasse() : telaPergunta(true); break;
+      case "resultado": html = E().jogada.resultado.vaiParaPasse && !E().jogada.oculta ? telaRumoAoPasse() : telaPergunta(true); break;
       case "passe": html = telaPasse(); break;
-      case "roleta": html = telaRoleta(); break;
+      case "roleta": html = E().jogada.oculta && !ui.revelacaoVista && !ui.giro ? telaPergunta(true, "roleta") : telaRoleta(); break;
       case "fim-rodada": html = telaFimRodada(); break;
       case "morte-intro": case "morte-leva": html = telaMorte(); break;
       case "fim": html = telaFinal(); break;
@@ -143,6 +145,8 @@
     desenharPainel();
     if (t === "pergunta") iniciarRelogio();
     if (ui.giro && !ui.giro.iniciado) iniciarGiro();
+    if (t === "fim-rodada" && app.querySelector(".final-lista.corrida")) animarFimRodada();
+    if (t === "fim" && app.querySelector(".degrau.espera")) animarFinal();
     var foco = app.querySelector("[data-foco]");
     if (foco) foco.focus({ preventScroll: true });
   }
@@ -321,7 +325,8 @@
     desenhar();
   }
   function limparUi() {
-    ui.revelando = null; ui.especial = null; ui.giro = null; ui.telaForcada = null; ui.espiar = false;
+    ui.revelando = null; ui.especial = null; ui.giro = null; ui.telaForcada = null; ui.revelacaoVista = false; ui.sorteando = false;
+    animId++;
     clearTimeout(timerEspecial);
   }
 
@@ -402,10 +407,51 @@
     '</aside>';
   }
 
+  /* sorteio: um marcador percorre as cartas restantes, vai desacelerando e para na sorteada */
+  function sortearComMarcador() {
+    if (ui.sorteando || ui.revelando !== null) return;
+    var livres = [];
+    E().cartas.forEach(function (c, k) { if (!c.usada) livres.push(k); });
+    if (!livres.length) return;
+    var escolha = livres[Math.floor(Math.random() * livres.length)], L = livres.length;
+    if (L === 1 || REDUZIR.matches) { abrirCarta(escolha); return; }
+    var cartas = app.querySelector(".cartas"), id = ++animId;
+    ui.sorteando = true;
+    cartas.classList.add("sorteando");
+    var b = app.querySelector('[data-acao="sortear"]'); if (b) b.disabled = true;
+    var inicio = Math.floor(Math.random() * L), alvo = livres.indexOf(escolha);
+    var passos = 2 * L + ((alvo - inicio + L) % L), k = 0;
+    if (passos < 16) passos += L;
+    function marcar(i) {
+      var ant = cartas.querySelector(".carta.marcada"); if (ant) ant.classList.remove("marcada");
+      var el = cartas.querySelector('.carta[data-indice="' + i + '"]'); if (el) el.classList.add("marcada");
+    }
+    function passo() {
+      if (id !== animId) return;
+      marcar(livres[(inicio + k) % L]);
+      if (k >= passos) {
+        cartas.querySelector(".carta.marcada").classList.add("parou");
+        setTimeout(function () {
+          if (id !== animId) return;
+          ui.sorteando = false;
+          cartas.classList.remove("sorteando");
+          var m = cartas.querySelector(".carta.marcada"); if (m) m.classList.remove("marcada", "parou");
+          abrirCarta(escolha);
+        }, 650);
+        return;
+      }
+      var p = k / passos;
+      k++;
+      setTimeout(passo, 55 + Math.pow(p, 2.6) * 430);
+    }
+    passo();
+  }
+
   /* abrir carta: gira, mostra o especial e só então abre a pergunta */
   function abrirCarta(i) {
     var c = E().cartas[i];
     if (!c || c.usada || ui.revelando !== null) return;
+    if (ui.sorteando && arguments.length < 2) return;
     ui.revelando = i;
     var el = app.querySelector('.carta[data-indice="' + i + '"]');
     if (el) { el.classList.add("virando"); app.querySelector(".cartas").classList.add("escolhida"); }
@@ -427,7 +473,7 @@
   }
   function concluirAbertura(i) {
     ui.revelando = null;
-    ui.espiar = false;
+
     motor.abrirCarta(i);
     salvar();
     desenhar();
@@ -460,8 +506,14 @@
   /* ---------- pergunta e resultado ---------- */
   function equipeResponde() { var j = E().jogada; return j.etapa === "passe" ? j.passe.equipe : j.equipe; }
 
-  function telaPergunta(respondida) {
-    var e = E(), j = e.jogada, q = motor.questao(j.q), eqI = equipeResponde(), eq = eqp(eqI), r = respondida ? j.resultado : null;
+  /* respondida: mostra o resultado. modo "roleta": errou no passe e a roleta vem a seguir. */
+  function telaPergunta(respondida, modo) {
+    var e = E(), j = e.jogada, q = motor.questao(j.q), eqI = equipeResponde(), eq = eqp(eqI);
+    var r = null;
+    if (respondida) r = modo === "roleta" ?
+      { tipo: "erro", titulo: j.porTempo ? "Tempo esgotado no passe" : "Errou no passe", delta: null, equipe: eqI, texto: "A equipe vai para a roleta de punição." } :
+      j.resultado;
+    var segredo = r && r.vaiParaPasse;   // vai ao passe: a resposta certa continua escondida
     var letras = ["A", "B", "C", "D"];
     var esp = j.etapa === "principal" && j.especial ? INFO_ESPECIAL[j.especial] : null;
     var valor = j.etapa === "morte" ? null : motor.valorAcerto();
@@ -475,7 +527,8 @@
     if (j.cegas && j.etapa === "principal") selo += '<span class="selo-especial s-efeito">' + ICONE.olho + 'Às cegas</span>';
     if (j.relogio && j.etapa === "principal") selo += '<span class="selo-especial s-efeito">' + ICONE.relogio + 'Contra o relógio</span>';
 
-    var h = '<main class="tela pergunta' + (r ? " respondida" : "") + (esp ? " com-" + j.especial : "") + '" style="--cor-equipe:' + corHex(eq.cor) + '">' +
+    var revelando = r && j.oculta, n = 0;
+    var h = '<main class="tela pergunta' + (r ? " respondida" : "") + (revelando ? " revelando" : "") + (esp ? " com-" + j.especial : "") + '" style="--cor-equipe:' + corHex(eq.cor) + '">' +
       '<header class="barra barra-jogo">' +
         '<p class="vez vez-barra">' + ficha(eq) + '<span><strong>' + esc(eq.nome) + '</strong> responde</span></p>' +
         '<div class="selos">' + selo + '</div>' +
@@ -484,7 +537,24 @@
       '<section class="pergunta-corpo">' +
         '<div class="telao"><h1 class="enunciado">' + esc(q.enunciado) + '</h1></div>';
 
-    if (!r && j.aberta) h += painelAberto(j, q);
+    if (!r && j.aberta) h += letrasOcultas(j);
+    else if (revelando) {
+      /* revelação: primeiro a letra escolhida, depois as outras (se a resposta puder ser mostrada) */
+      var ordem = j.ordemOculta, passo = 1;
+      h += '<div class="alternativas">' + ordem.map(function (orig, pos) {
+        var escolhida = orig === j.escolhida, k = escolhida ? 0 : passo++;
+        var esconder = segredo && !escolhida;
+        var classe = "alternativa revelada";
+        if (esconder) classe += " segredo";
+        else if (orig === q.correta) classe += " certa";
+        else if (escolhida) classe += " errada";
+        else classe += " apagada";
+        if (escolhida) classe += " escolhida";
+        return '<button class="' + classe + '" style="--k:' + k + '" disabled>' +
+          '<span class="letra">' + letras[pos] + '</span><span class="texto">' + (esconder ? "?" : esc(q.alternativas[orig])) + '</span></button>';
+      }).join("") + '</div>';
+      n = segredo ? 1 : ordem.length;
+    }
     else h += '<div class="alternativas">' + j.ordem.map(function (orig, pos) {
         var classe = "alternativa", cortada = j.eliminadas.indexOf(orig) >= 0;
         if (r) {
@@ -496,7 +566,7 @@
           '<span class="letra">' + letras[pos] + '</span><span class="texto">' + esc(q.alternativas[orig]) + '</span>' +
           (cortada && !r ? '<span class="cortada-icone" aria-label="eliminada">' + ICONE.tesoura + '</span>' : '') + '</button>';
       }).join("") + '</div>';
-    h += '</section><aside class="pergunta-lado">';
+    h += '</section><aside class="pergunta-lado"' + (revelando ? ' style="--n:' + n + '"' : '') + '>';
 
     if (!r) {
       var bloqueado = motor.passarBloqueado();
@@ -509,36 +579,36 @@
           botaoDesfazer() +
         '</div>';
     } else {
-      var pun = j.punicao;
+      var pun = modo === "roleta" ? null : j.punicao;
+      var botao = modo === "roleta" ? '<button class="botao botao-principal botao-enorme" data-acao="ir-roleta" data-foco>Girar a roleta de punição</button>' :
+        segredo ? '<button class="botao botao-principal botao-enorme" data-acao="abrir-passe" data-foco>Ir para o passe</button>' :
+        '<button class="botao botao-principal botao-enorme" data-acao="concluir" data-foco>' + (j.etapa === "morte" ? "Continuar" : "Voltar ao tabuleiro") + '</button>';
       h += '<div class="veredito ' + r.tipo + '" role="status">' +
           '<span class="veredito-titulo">' + esc(r.titulo) + '</span>' +
           (r.delta ? '<span class="veredito-pontos">' + sinal(r.delta) + '</span>' : '') +
           (r.equipe !== null && r.equipe !== undefined ? '<span class="veredito-equipe">' + ficha(eqp(r.equipe)) + esc(eqp(r.equipe).nome) + '</span>' : '') +
           (pun && pun.beneficiada !== null ? '<span class="veredito-equipe">' + ficha(eqp(pun.beneficiada)) + esc(eqp(pun.beneficiada).nome) + ' <b class="mais">+' + (j.valor / 2) + '</b></span>' : '') +
           (r.texto ? '<p class="veredito-regra">' + esc(r.texto) + '</p>' : '') +
-          '<p>' + esc(q.explicacao) + '</p>' +
+          (segredo ? '<p>A resposta certa fica em segredo: a questão vai para o passe.</p>' : modo === "roleta" ? '' : '<p>' + esc(q.explicacao) + '</p>') +
         '</div>' +
-        '<div class="lado-acoes lado-fim">' +
-          '<button class="botao botao-principal botao-enorme" data-acao="concluir" data-foco>' + (j.etapa === "morte" ? "Continuar" : "Voltar ao tabuleiro") + '</button>' +
-          botaoDesfazer() +
-        '</div>';
+        '<div class="lado-acoes lado-fim">' + botao + (modo === "roleta" ? '' : botaoDesfazer()) + '</div>';
     }
     return h + '</aside></main>';
   }
 
-  function painelAberto(j, q) {
-    var motivo = j.etapa === "passe" ? "Passe: sem alternativas, a equipe tem 10 s para responder em voz alta." :
-      j.sumiram ? "Em Dobro: as alternativas sumiram. A equipe responde em voz alta." :
-      j.cegas ? "Às cegas: esta pergunta vem sem alternativas." : "Resposta em voz alta.";
-    return '<div class="aberta">' +
-      '<p class="aberta-titulo">Resposta aberta</p>' +
-      '<p class="aberta-motivo">' + esc(motivo) + '</p>' +
-      '<div class="aberta-botoes">' +
-        '<button class="botao botao-certo" data-acao="julgar" data-valor="1" data-foco>Acertou <kbd>S</kbd></button>' +
-        '<button class="botao botao-errado" data-acao="julgar" data-valor="0">Errou <kbd>N</kbd></button>' +
-      '</div>' +
-      '<button class="espiar" data-acao="espiar" aria-expanded="' + ui.espiar + '">' + (ui.espiar ? "Esconder resposta" : "Espiar resposta (professor)") + '</button>' +
-      (ui.espiar ? '<p class="espiada">' + esc(q.alternativas[q.correta]) + '</p>' : '') +
+  /* alternativas ocultas: só as letras, numa ordem nova; o conteúdo aparece depois da escolha */
+  function letrasOcultas(j) {
+    var letras = ["A", "B", "C", "D"];
+    var motivo = j.etapa === "passe" ? "Passe: as alternativas foram escondidas e trocaram de letra." :
+      j.sumiram ? "Em Dobro: as alternativas sumiram e trocaram de letra." :
+      j.cegas ? "Às cegas: as alternativas não aparecem nesta pergunta." : "As alternativas estão escondidas.";
+    return '<div class="ocultas">' +
+      '<p class="ocultas-titulo">Alternativas ocultas</p>' +
+      '<p class="ocultas-motivo">' + esc(motivo) + ' Escolham uma letra: o conteúdo aparece depois.</p>' +
+      '<div class="letras-ocultas">' + j.ordemOculta.map(function (orig, pos) {
+        return '<button class="letra-oculta" data-acao="responder" data-orig="' + orig + '"' + (pos === 0 ? " data-foco" : "") + ' aria-label="Letra ' + letras[pos] + '">' +
+          '<span class="letra">' + letras[pos] + '</span><span class="oculta-verso" aria-hidden="true">?</span></button>';
+      }).join("") + '</div>' +
     '</div>';
   }
 
@@ -780,34 +850,123 @@
   }
 
   /* ---------- fim de rodada: pódio parcial ---------- */
+  /* pódio parcial: as barras correm na mesma velocidade, então quem fez mais pontos cresce por mais tempo;
+     no fim a lista se reordena e mostra posições, pontos da rodada e quem subiu ou caiu */
+  function chaveAnim() { var e = E(); return e.fase + "-" + e.rodada + "-" + e.trajetoria.length + "-" + (e.vencedor === null ? "" : e.vencedor); }
+  function vaiAnimar() { return ui.animado !== chaveAnim() && !REDUZIR.matches; }
+  function botaoPular() { return '<button class="botao botao-contorno botao-pequeno pular" data-acao="pular-anim">Pular animação</button>'; }
+
   function telaFimRodada() {
-    var e = E(), rk = motor.ranking(), ultima = motor.ehUltimaRodada();
+    var e = E(), rk = motor.ranking(), ultima = motor.ehUltimaRodada(), animar = vaiAnimar();
     var empate = ultima && motor.empatadosNoTopo().length > 1;
-    var antes = e.placarInicioRodada.map(function (p, i) { return { i: i, p: p }; }).sort(function (a, b) { return b.p - a.p || a.i - b.i; });
-    var posAntes = {}; antes.forEach(function (x, k) { posAntes[x.i] = k; });
+    var antes = e.placarInicioRodada.map(function (p, i) { return { equipe: i, pontos: p }; }).sort(function (a, b) { return b.pontos - a.pontos || a.equipe - b.equipe; });
+    var posAntes = {}; antes.forEach(function (x, k) { posAntes[x.equipe] = k; });
+    var posFinal = {}; rk.forEach(function (x, k) { posFinal[x.equipe] = k; });
+    function extra(eq) {
+      var d = e.pontos[eq] - e.placarInicioRodada[eq], mov = posAntes[eq] - posFinal[eq];
+      return '<span class="delta' + (d < 0 ? " neg" : "") + '">' + sinal(d) + ' na rodada</span>' +
+        (e.rodada > 1 && mov ? '<span class="mov ' + (mov > 0 ? "sobe" : "desce") + '">' + (mov > 0 ? "▲ subiu " + mov : "▼ caiu " + (-mov)) + '</span>' : '');
+    }
     return '<main class="tela final fim-rodada">' + cenario() +
       '<header class="final-topo">' + LOGO.completo("logo-barra") + '<h1>' + (e.encerradaAntes ? "Partida encerrada" : "Fim da rodada " + e.rodada) + '</h1><p>' + esc(nomeTema()) + ' · pódio parcial</p></header>' +
-      listaRanking(rk, function (x, k) {
-        var d = e.pontos[x.equipe] - e.placarInicioRodada[x.equipe], mov = posAntes[x.equipe] - k;
-        return '<span class="delta' + (d < 0 ? " neg" : "") + '">' + sinal(d) + ' na rodada</span>' +
-          (e.rodada > 1 && mov ? '<span class="mov ' + (mov > 0 ? "sobe" : "desce") + '">' + (mov > 0 ? "▲ subiu " + mov : "▼ caiu " + (-mov)) + '</span>' : '');
-      }) +
-      (empate ? '<p class="nota nota-centro destaque">Empate no primeiro lugar: vem a morte súbita!</p>' : '') +
-      '<div class="inicio-acoes">' +
-        '<button class="botao botao-principal botao-enorme" data-acao="avancar-rodada" data-foco>' + (!ultima ? "Rodada " + (e.rodada + 1) : empate ? "Morte súbita" : "Pódio final") + '</button>' +
+      listaRanking(animar ? antes : rk, extra, animar) +
+      (empate ? '<p class="nota nota-centro destaque' + (animar ? " esconde" : "") + '" data-depois>Empate no primeiro lugar: vem a morte súbita!</p>' : '') +
+      '<div class="inicio-acoes' + (animar ? " esconde" : "") + '" data-depois>' +
+        '<button class="botao botao-principal botao-enorme" data-acao="avancar-rodada"' + (animar ? '' : ' data-foco') + '>' + (!ultima ? "Rodada " + (e.rodada + 1) : empate ? "Morte súbita" : "Pódio final") + '</button>' +
         botaoDesfazer() +
       '</div>' +
+      (animar ? botaoPular() : '') +
     '</main>';
   }
-  function listaRanking(rk, extra) {
-    var e = E(), topo = Math.max(1, Math.max.apply(null, e.pontos.map(Math.abs)));
-    return '<ol class="final-lista">' + rk.map(function (x, k) {
-      var q = eqp(x.equipe), p = x.pontos;
-      return '<li class="final-item' + (x.posicao === 1 ? " primeiro" : "") + '" style="--cor-equipe:' + corHex(q.cor) + ';--largura:' + Math.max(4, Math.round(Math.max(0, p) / topo * 100)) + '%;--k:' + k + '">' +
-        '<span class="final-posicao">' + x.posicao + 'º</span>' + ficha(q, "ficha-grande") +
-        '<span class="final-nome">' + esc(q.nome) + '<i class="final-barra"></i>' + (extra ? '<span class="final-extra">' + extra(x, k) + '</span>' : '') + '</span>' +
-        '<span class="placar-pontos' + (p < 0 ? " negativo" : "") + '">' + pontosTxt(p) + '</span></li>';
+  /* lista do placar; com animar, começa com o placar do início da rodada (ou zero) e sem posições */
+  function listaRanking(lista, extra, animar, deZero) {
+    var e = E(), rk = motor.ranking(), posicao = {};
+    rk.forEach(function (x) { posicao[x.equipe] = x.posicao; });
+    var topo = Math.max(1, Math.max.apply(null, e.pontos.map(Math.abs)));
+    return '<ol class="final-lista' + (animar ? " corrida" : "") + '" data-topo="' + topo + '">' + lista.map(function (x) {
+      var i = x.equipe, q = eqp(i), p = e.pontos[i], de = deZero ? 0 : e.placarInicioRodada[i];
+      var mostrado = animar ? de : p;
+      return '<li class="final-item' + (!animar && posicao[i] === 1 ? " primeiro" : "") + '" data-equipe="' + i + '" data-de="' + de + '" data-ate="' + p + '" style="--cor-equipe:' + corHex(q.cor) + ';--largura:' + Math.max(3, Math.round(Math.max(0, mostrado) / topo * 100)) + '%">' +
+        '<span class="final-posicao">' + (animar ? '' : posicao[i] + 'º') + '</span>' + ficha(q, "ficha-grande") +
+        '<span class="final-nome">' + esc(q.nome) + '<i class="final-barra"></i>' + (extra ? '<span class="final-extra' + (animar ? " esconde" : "") + '">' + extra(i) + '</span>' : '') + '</span>' +
+        '<span class="placar-pontos' + (mostrado < 0 ? " negativo" : "") + '">' + pontosTxt(mostrado) + '</span></li>';
     }).join("") + '</ol>';
+  }
+
+  /* ---------- animações de suspense ---------- */
+  function esperar(ms, id, fn) { setTimeout(function () { if (id === animId) fn(); }, ms); }
+  function contar(el, de, ate, ms, id, fim) {
+    var t0 = null;
+    function quadro(ts) {
+      if (id !== animId) return;
+      if (t0 === null) t0 = ts;
+      var p = ms > 0 ? Math.min(1, (ts - t0) / ms) : 1, v = Math.round(de + (ate - de) * (1 - Math.pow(1 - p, 3)));
+      el.textContent = pontosTxt(p < 1 ? Math.round(v / 10) * 10 : ate); el.classList.toggle("negativo", v < 0);
+      if (p < 1) requestAnimationFrame(quadro); else if (fim) fim();
+    }
+    requestAnimationFrame(quadro);
+  }
+  function mostrarDepois(raiz) {
+    (raiz || app).querySelectorAll("[data-depois]").forEach(function (el) { el.classList.remove("esconde"); });
+    var b = app.querySelector("[data-depois] .botao-principal");
+    if (b) { b.focus({ preventScroll: true }); if (b.getBoundingClientRect().bottom > window.innerHeight) b.scrollIntoView({ behavior: "smooth", block: "center" }); }
+    var pular = app.querySelector(".pular"); if (pular) pular.remove();
+  }
+
+  /* corrida das barras: mesma velocidade para todas, quem tem mais pontos corre por mais tempo */
+  function animarCorrida(lista, id, fim) {
+    var topo = Number(lista.dataset.topo) || 1;
+    var itens = Array.prototype.map.call(lista.children, function (li) {
+      return { li: li, de: Number(li.dataset.de), ate: Number(li.dataset.ate), num: li.querySelector(".placar-pontos"), barra: li.querySelector(".final-barra") };
+    });
+    var maior = Math.max.apply(null, itens.map(function (d) { return Math.abs(d.ate - d.de); }));
+    var dur = Math.min(5200, 1800 + maior * 4), vel = maior > 0 ? maior / dur : 1, t0 = null;
+    itens.forEach(function (d) { d.li.classList.toggle("contando", d.ate !== d.de); });
+    function quadro(ts) {
+      if (id !== animId) return;
+      if (t0 === null) t0 = ts;
+      var t = ts - t0, acabou = true;
+      itens.forEach(function (d) {
+        var dist = Math.abs(d.ate - d.de), feito = Math.min(dist, vel * t);
+        if (feito < dist) acabou = false; else d.li.classList.remove("contando");
+        var v = d.de + (d.ate >= d.de ? 1 : -1) * feito;
+        d.num.textContent = pontosTxt(feito < dist ? Math.round(v / 10) * 10 : d.ate);
+        d.num.classList.toggle("negativo", v < 0);
+        d.barra.style.width = Math.max(3, Math.max(0, v) / topo * 100) + "%";
+      });
+      if (!acabou) requestAnimationFrame(quadro);
+      else esperar(600, id, function () { reordenar(lista, id, fim); });
+    }
+    requestAnimationFrame(quadro);
+  }
+  /* reordena a lista pela classificação final, deslizando cada equipe até o seu lugar */
+  function reordenar(lista, id, fim) {
+    var rk = motor.ranking(), itens = {}, antes = {};
+    Array.prototype.forEach.call(lista.children, function (li) { itens[li.dataset.equipe] = li; antes[li.dataset.equipe] = li.getBoundingClientRect().top; });
+    rk.forEach(function (x) { lista.appendChild(itens[x.equipe]); });
+    rk.forEach(function (x) {
+      var li = itens[x.equipe], d = antes[x.equipe] - li.getBoundingClientRect().top;
+      li.style.transition = "none"; li.style.transform = "translateY(" + d + "px)";
+    });
+    void lista.offsetHeight;
+    rk.forEach(function (x) { var li = itens[x.equipe]; li.style.transition = "transform .8s cubic-bezier(.2,1.1,.3,1)"; li.style.transform = ""; });
+    esperar(900, id, function () {
+      rk.forEach(function (x, k) {
+        var li = itens[x.equipe];
+        li.querySelector(".final-posicao").textContent = x.posicao + "º";
+        if (x.posicao === 1) li.classList.add("primeiro", "destaca");
+        var ex = li.querySelector(".final-extra"); if (ex) ex.classList.remove("esconde");
+      });
+      if (fim) fim();
+    });
+  }
+
+  function animarFimRodada() {
+    var id = animId, chave = chaveAnim(), lista = app.querySelector(".final-lista.corrida");
+    if (!lista) return;
+    esperar(500, id, function () {
+      animarCorrida(lista, id, function () { ui.animado = chave; esperar(400, id, function () { mostrarDepois(); }); });
+    });
   }
 
   /* ---------- morte súbita ---------- */
@@ -845,7 +1004,7 @@
       '<path d="M40 20c0 10 2 20 8 28" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" fill="none" opacity=".55"/>' +
     '</svg>';
   }
-  function trajetoriaSvg() {
+  function trajetoriaSvg(animar) {
     var e = E(), T = e.trajetoria, n = e.equipes.length;
     if (T.length < 2) return "";
     var W = 640, H = 260, M = { e: 46, d: 70, t: 16, b: 28 };
@@ -863,40 +1022,110 @@
       grade += '<line x1="' + x(k).toFixed(1) + '" x2="' + x(k).toFixed(1) + '" y1="' + M.t + '" y2="' + (H - M.b) + '" class="tj-rodada"/>' +
         '<text x="' + (x(k) + 4).toFixed(1) + '" y="' + (H - 10) + '" class="tj-eixo">rodada ' + (r + 1) + '</text>';
     });
-    var linhas = "", fichas = "";
+    var linhas = "", cabecas = "", fichas = "";
     for (var i = 0; i < n; i++) {
-      var pts = T.map(function (p, k) { return x(k).toFixed(1) + "," + y(p[i]).toFixed(1); }).join(" ");
-      linhas += '<polyline points="' + pts + '" fill="none" stroke="' + corHex(eqp(i).cor) + '" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" class="tj-linha" style="--k:' + i + '"/>';
+      var cor = corHex(eqp(i).cor);
+      var pts = T.map(function (p, k) { return x(k).toFixed(1) + "," + y(p[i]).toFixed(1); });
+      linhas += '<polyline points="' + (animar ? pts[0] : pts.join(" ")) + '" data-pts="' + pts.join(" ") + '" fill="none" stroke="' + cor + '" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" class="tj-linha"/>';
+      if (animar) cabecas += '<circle class="tj-cabeca" r="5" cx="' + x(0).toFixed(1) + '" cy="' + y(0).toFixed(1) + '" fill="' + cor + '" stroke="#FFFFFF" stroke-width="1.6"/>';
       var f = achar(D.formas, eqp(i).forma), ux = x(T.length - 1), uy = y(T[T.length - 1][i]);
-      fichas += '<g transform="translate(' + (ux + 4).toFixed(1) + ' ' + (uy - 8).toFixed(1) + ') scale(.67)"><path d="' + f.d + '" fill="' + corHex(eqp(i).cor) + '" stroke="var(--ficha-traco)" stroke-width="1.6"/></g>';
+      fichas += '<g class="tj-ficha" transform="translate(' + (ux + 4).toFixed(1) + ' ' + (uy - 8).toFixed(1) + ') scale(.67)"><path d="' + f.d + '" fill="' + cor + '" stroke="var(--ficha-traco)" stroke-width="1.6"/></g>';
     }
-    return '<figure class="trajetoria"><figcaption>Trajetória do placar, carta a carta</figcaption>' +
-      '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Gráfico da trajetória do placar de cada equipe ao longo da partida">' + grade + linhas + fichas + '</svg></figure>';
+    return '<figure class="trajetoria' + (animar ? " esconde" : "") + '"><figcaption>Trajetória do placar, carta a carta</figcaption>' +
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Gráfico da trajetória do placar de cada equipe ao longo da partida">' + grade + linhas + cabecas +
+        '<g class="tj-fichas' + (animar ? " esconde" : "") + '">' + fichas + '</g></svg></figure>';
   }
+  /* a linha de cada equipe avança um ponto (uma carta) por vez */
+  function animarTrajetoria(id, fim) {
+    var fig = app.querySelector(".trajetoria");
+    if (!fig) { if (fim) fim(); return; }
+    fig.classList.remove("esconde");
+    fig.scrollIntoView({ behavior: "smooth", block: "center" });
+    var linhas = Array.prototype.map.call(fig.querySelectorAll(".tj-linha"), function (l) { return { el: l, pts: l.dataset.pts.split(" ") }; });
+    var cabecas = fig.querySelectorAll(".tj-cabeca"), total = linhas[0].pts.length, k = 1;
+    var intervalo = Math.max(45, Math.min(260, 4200 / total));
+    function passo() {
+      if (id !== animId) return;
+      linhas.forEach(function (l, i) {
+        l.el.setAttribute("points", l.pts.slice(0, k + 1).join(" "));
+        var p = l.pts[k].split(","); cabecas[i].setAttribute("cx", p[0]); cabecas[i].setAttribute("cy", p[1]);
+      });
+      k++;
+      if (k < total) setTimeout(passo, intervalo);
+      else esperar(300, id, function () {
+        Array.prototype.forEach.call(cabecas, function (c) { c.remove(); });
+        fig.querySelector(".tj-fichas").classList.remove("esconde");
+        if (fim) fim();
+      });
+    }
+    esperar(500, id, passo);
+  }
+
+  function confete() {
+    var cores = ["#FFF0B8", "#F5C451", "#FFFFFF", "#D21F46", "#9FDCFF", "#2FCB7A"], h = "";
+    for (var k = 0; k < 46; k++) h += '<i style="--x:' + Math.round(Math.random() * 100) + '%;--d:' + (Math.random() * 1.4).toFixed(2) + 's;--t:' + (2.4 + Math.random() * 2).toFixed(2) + 's;--c:' + cores[k % cores.length] + ';--r:' + Math.round(Math.random() * 360) + 'deg"></i>';
+    return '<div class="confete" aria-hidden="true">' + h + '</div>';
+  }
+
   function telaFinal() {
-    var e = E(), rk = motor.ranking(), top3 = rk.slice(0, 3), venceu = eqp(rk[0].equipe);
+    var e = E(), rk = motor.ranking(), top3 = rk.slice(0, 3), venceu = eqp(rk[0].equipe), animar = vaiAnimar();
     var ordemPodio = top3.length === 3 ? [top3[1], top3[0], top3[2]] : top3.length === 2 ? [top3[1], top3[0]] : [top3[0]];
     var porMorte = e.morte && e.vencedor !== null;
     return '<main class="tela final podio-final">' + cenario() +
       '<header class="final-topo">' + LOGO.completo("logo-barra") + '<h1>Pódio final</h1><p>' + esc(nomeTema()) + '</p></header>' +
       '<div class="podio">' + ordemPodio.map(function (x) {
         var q = eqp(x.equipe), pos = x === rk[0] ? 1 : x.posicao;
-        return '<div class="degrau d' + pos + '" style="--cor-equipe:' + corHex(q.cor) + '">' +
+        return '<div class="degrau d' + pos + (animar ? " espera" : " campeao-fixo") + '" data-pos="' + pos + '" data-ordem="' + rk.indexOf(x) + '" data-ate="' + x.pontos + '" style="--cor-equipe:' + corHex(q.cor) + '">' +
           (x === rk[0] ? trofeu() : '') + ficha(q, "ficha-enorme") +
           '<strong class="degrau-nome">' + esc(q.nome) + '</strong>' +
-          '<span class="placar-pontos' + (x.pontos < 0 ? " negativo" : "") + '">' + pontosTxt(x.pontos) + '</span>' +
+          '<span class="placar-pontos' + (!animar && x.pontos < 0 ? " negativo" : "") + '">' + (animar ? "0" : pontosTxt(x.pontos)) + '</span>' +
           '<span class="degrau-base"><b>' + pos + 'º</b></span>' +
         '</div>';
       }).join("") + '</div>' +
-      '<p class="campea" role="status"><b>' + esc(venceu.nome) + '</b> venceu o Duelo' + (porMorte ? ' na morte súbita (leva ' + e.morte.leva + ')' : '') + '!</p>' +
-      trajetoriaSvg() +
-      (rk.length > 3 ? listaRanking(rk) : '') +
-      '<div class="inicio-acoes">' +
-        '<button class="botao botao-principal botao-enorme" data-acao="jogar-de-novo" data-foco>Jogar de novo</button>' +
+      '<p class="campea' + (animar ? " esconde" : "") + '" role="status"><b>' + esc(venceu.nome) + '</b> venceu o Duelo' + (porMorte ? ' na morte súbita (leva ' + e.morte.leva + ')' : '') + '!</p>' +
+      trajetoriaSvg(animar) +
+      (rk.length > 3 ? '<div class="lista-final' + (animar ? " esconde" : "") + '">' + listaRanking(rk) + '</div>' : '') +
+      '<div class="inicio-acoes' + (animar ? " esconde" : "") + '" data-depois>' +
+        '<button class="botao botao-principal botao-enorme" data-acao="jogar-de-novo"' + (animar ? '' : ' data-foco') + '>Jogar de novo</button>' +
         '<button class="botao botao-contorno" data-acao="ir-config">Nova configuração</button>' +
         '<button class="botao botao-contorno" data-acao="sair">Tela inicial</button>' +
       '</div>' +
+      (animar ? botaoPular() : '') +
     '</main>';
+  }
+
+  /* pódio final: 3º, depois 2º e por fim o campeão, com os pontos subindo; depois o gráfico se forma */
+  function animarFinal() {
+    var id = animId, chave = chaveAnim();
+    var degraus = Array.prototype.slice.call(app.querySelectorAll(".degrau.espera"));
+    degraus.sort(function (a, b) { return Number(b.dataset.ordem) - Number(a.dataset.ordem); });
+    var k = 0;
+    function proximo() {
+      if (k >= degraus.length) return depoisDoPodio();
+      var d = degraus[k++], campeao = k === degraus.length, ms = campeao ? 2600 : 1700;
+      d.classList.remove("espera"); d.classList.add("sobe");
+      if (campeao) d.classList.add("suspense");
+      esperar(campeao ? 900 : 500, id, function () {
+        contar(d.querySelector(".placar-pontos"), 0, Number(d.dataset.ate), ms, id, function () {
+          if (campeao) {
+            d.classList.remove("suspense"); d.classList.add("campeao");
+            app.querySelector(".podio").insertAdjacentHTML("beforeend", confete());
+          }
+          esperar(campeao ? 900 : 700, id, proximo);
+        });
+      });
+    }
+    function depoisDoPodio() {
+      var c = app.querySelector(".campea"); if (c) c.classList.remove("esconde");
+      esperar(900, id, function () {
+        animarTrajetoria(id, function () {
+          var l = app.querySelector(".lista-final"); if (l) l.classList.remove("esconde");
+          ui.animado = chave;
+          esperar(500, id, function () { mostrarDepois(); });
+        });
+      });
+    }
+    esperar(700, id, proximo);
   }
 
   /* ================= painel: visual e depuração ================= */
@@ -1004,11 +1233,8 @@
       case "forma": config.equipes[Number(b.dataset.equipe)].forma = v; salvar(); desenhar(); break;
 
       case "carta": abrirCarta(Number(b.dataset.indice)); break;
-      case "sortear":
-        var livres = [];
-        E().cartas.forEach(function (c, k) { if (!c.usada) livres.push(k); });
-        if (livres.length) abrirCarta(livres[Math.floor(Math.random() * livres.length)]);
-        break;
+      case "sortear": sortearComMarcador(); break;
+      case "pular-anim": ui.animado = chaveAnim(); desenhar(); break;
       case "encerrar":
         if (window.confirm("Encerrar a partida agora e ir para o pódio?")) { motor.encerrar(); depois(); }
         break;
@@ -1016,18 +1242,17 @@
       case "placar-toggle": ui.placarAberto = !ui.placarAberto; b.closest(".placar").classList.toggle("aberto", ui.placarAberto); b.setAttribute("aria-expanded", ui.placarAberto); break;
 
       case "responder": motor.responder(Number(b.dataset.orig)); depois(); break;
-      case "julgar": motor.julgarAberta(v === "1"); ui.espiar = false; depois(); break;
-      case "espiar": ui.espiar = !ui.espiar; atualizarPainelAberto(); break;
+      case "ir-roleta": ui.revelacaoVista = true; desenhar(); break;
       case "passar": motor.passar(); depois(); break;
       case "pausar": pausar(); break;
       case "tesoura": usarTesoura(); break;
       case "fechar-giro": ui.giro = null; desenhar(); break;
-      case "concluir": motor.concluirJogada(); ui.espiar = false; depois(); break;
+      case "concluir": motor.concluirJogada(); ui.revelacaoVista = false; depois(); break;
       case "desfazer": desfazer(); break;
 
       case "abrir-passe": motor.abrirPasse(); depois(); break;
       case "sortear-passe": sortearPasse(); break;
-      case "aceitar-passe": ui.giro = null; motor.aceitarPasse(); depois(); break;
+      case "aceitar-passe": ui.giro = null; ui.revelacaoVista = false; motor.aceitarPasse(); depois(); break;
       case "recusar-passe": ui.giro = null; motor.recusarPasse(); depois(); break;
       case "girar-punicao": girarPunicao(); break;
       case "fechar-punicao": ui.giro = null; ui.telaForcada = null; desenhar(); break;
@@ -1050,16 +1275,6 @@
     }
   });
   function depoisDep() { salvar(); desenhar(); }
-
-  function atualizarPainelAberto() {
-    var j = E().jogada, q = motor.questao(j.q), cx = app.querySelector(".aberta");
-    if (!cx) return;
-    var b = cx.querySelector(".espiar"), p = cx.querySelector(".espiada");
-    b.textContent = ui.espiar ? "Esconder resposta" : "Espiar resposta (professor)";
-    b.setAttribute("aria-expanded", ui.espiar);
-    if (ui.espiar && !p) { p = document.createElement("p"); p.className = "espiada"; p.textContent = q.alternativas[q.correta]; cx.appendChild(p); }
-    if (!ui.espiar && p) p.remove();
-  }
 
   function desfazer() {
     if (!motor || !motor.podeDesfazer()) return;
@@ -1102,7 +1317,7 @@
     });
   }
 
-  /* teclado: A–D ou 1–4 respondem, S/N julgam resposta aberta, espaço pausa, P passa, T usa a Tesoura, Ctrl+Z desfaz */
+  /* teclado: A–D ou 1–4 respondem (também as letras ocultas), espaço pausa, P passa, T usa a Tesoura, Ctrl+Z desfaz */
   document.addEventListener("keydown", function (ev) {
     if (ev.target.matches("input, textarea, select")) return;
     if (ev.key === "Escape" && ui.painelAberto) { ui.painelAberto = false; desenharPainel(); return; }
@@ -1112,13 +1327,9 @@
     if (ui.especial && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); fecharEspecial(); return; }
     if (telaAtual() !== "pergunta" || ui.giro || ui.especial) return;
     var j = E().jogada, k = ev.key.toLowerCase();
-    if (j.aberta) {
-      if (k === "s") { ev.preventDefault(); motor.julgarAberta(true); depois(); return; }
-      if (k === "n") { ev.preventDefault(); motor.julgarAberta(false); depois(); return; }
-    } else {
-      var pos = "abcd".indexOf(k); if (pos < 0) pos = "1234".indexOf(k);
-      if (pos >= 0 && k.length === 1) { ev.preventDefault(); if (motor.responder(j.ordem[pos]) !== null) depois(); return; }
-    }
+    var pos = "abcd".indexOf(k); if (pos < 0) pos = "1234".indexOf(k);
+    var lista = j.aberta ? j.ordemOculta : j.ordem;
+    if (pos >= 0 && k.length === 1 && pos < lista.length) { ev.preventDefault(); if (motor.responder(lista[pos]) !== null) depois(); return; }
     if (k === "p" && j.etapa === "principal") { ev.preventDefault(); if (motor.passar()) depois(); }
     else if (k === "t" && motor.podeUsarTesoura()) { ev.preventDefault(); usarTesoura(); }
     else if (k === " " && !ev.target.matches("button")) { ev.preventDefault(); pausar(); }

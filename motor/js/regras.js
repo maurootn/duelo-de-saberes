@@ -10,7 +10,9 @@
    - armadilha: Passar bloqueado, tempo esgotado conta como erro, errou vai ao passe pelo valor normal;
    - Em Dobro: vale o dobro; alternativas somem aos 10 s ou ao fim da leitura (o que vier depois);
      errou perde 50% do valor normal; no passe vale o valor normal + 50%;
-   - passe aceito: sem alternativas, 10 s; tempo esgotado = erro → roleta de punição;
+   - alternativas ocultas (Às cegas, Em Dobro depois dos 10 s e passe): ficam só as letras, sorteadas
+     de novo; a equipe escolhe uma, o conteúdo é revelado e o app julga sozinho (pedido de 09/11/2026);
+   - passe aceito: alternativas ocultas, 10 s; tempo esgotado = erro → roleta de punição;
    - Tesoura: uso único, no máximo uma por equipe, qualquer carta com alternativas visíveis;
    - Ajuda ao lanterna: quem errou perde metade e a lanterna ganha essa metade
      (lanterna empatada: a primeira na ordem das equipes);
@@ -230,7 +232,9 @@
         etapa: "principal",
         ordem: embaralhar([0, 1, 2, 3], m.rng),
         eliminadas: [],
-        aberta: !!cegas,                 // resposta aberta (sem alternativas)
+        aberta: !!cegas,                 // alternativas ocultas: só as letras aparecem
+        ordemOculta: cegas ? embaralhar([0, 1, 2, 3], m.rng) : null,
+        oculta: false,                   // a resposta foi dada por letra oculta
         cegas: !!cegas, relogio: !!relogio,
         tempoTotal: tempo, restante: tempo, pausado: false,
         somemEm: esp === "dobro" ? Math.max(DOBRO_SOMEM, tempoLeitura(questao)) : null,
@@ -284,23 +288,21 @@
       if (!j || j.aberta || E().fase !== "pergunta") return;
       j.aberta = true;
       j.sumiram = true;
+      /* as letras são sorteadas de novo: vale lembrar o conteúdo, não a posição */
+      j.ordemOculta = embaralhar([0, 1, 2, 3].filter(function (k) { return j.eliminadas.indexOf(k) < 0; }), m.rng);
     };
 
     /* ---------- respostas ---------- */
-    /* resposta com alternativas: indice = posição original (0–3) na questão */
+    /* indice = posição original (0–3) da alternativa na questão.
+       Com alternativas ocultas, a equipe escolhe uma das letras sorteadas e o conteúdo é revelado depois. */
     m.responder = function (indice) {
       var e = E(), j = e.jogada;
-      if (!j || e.fase !== "pergunta" || j.aberta) return null;
-      if (j.eliminadas.indexOf(indice) >= 0) return null;
+      if (!j || e.fase !== "pergunta") return null;
+      if (j.aberta) { if (!j.ordemOculta || j.ordemOculta.indexOf(indice) < 0) return null; }
+      else if (j.eliminadas.indexOf(indice) >= 0) return null;
       guardar();
+      j.oculta = !!j.aberta;
       return julgar(indice === q(j.q).correta, indice);
-    };
-    /* resposta aberta: o professor marca Acertou ou Errou */
-    m.julgarAberta = function (acertou) {
-      var e = E(), j = e.jogada;
-      if (!j || e.fase !== "pergunta" || !j.aberta) return null;
-      guardar();
-      return julgar(!!acertou, null);
     };
     m.passar = function () {
       var e = E(), j = e.jogada;
@@ -439,6 +441,9 @@
       j.etapa = "passe";
       j.aberta = true;
       j.eliminadas = [];
+      j.ordemOculta = embaralhar([0, 1, 2, 3], m.rng);
+      j.oculta = false;
+      j.escolhida = null;
       j.tempoTotal = TEMPO_PASSE;
       j.restante = TEMPO_PASSE;
       j.pausado = false;
@@ -623,7 +628,7 @@
       var tempo = (questao.tempo || 20) + e.tempoExtraLeitura;
       e.jogada = {
         carta: -1, q: questao.id, valor: 500, especial: null, equipe: eq, etapa: "morte",
-        ordem: embaralhar([0, 1, 2, 3], m.rng), eliminadas: [], aberta: false, cegas: false, relogio: false,
+        ordem: embaralhar([0, 1, 2, 3], m.rng), eliminadas: [], aberta: false, ordemOculta: null, oculta: false, cegas: false, relogio: false,
         tempoTotal: tempo, restante: tempo, pausado: false, somemEm: null,
         tesouraUsada: false, passe: null, punicao: null, resultado: null
       };

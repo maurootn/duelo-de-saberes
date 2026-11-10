@@ -175,21 +175,55 @@
       igual(m.estado.pontos, [0, 0]);
       igual(m.cartasRestantes(), 19);
     });
-    teste("Aceitou: pergunta sem alternativas e 10 s", function () {
+    teste("Aceitou: alternativas ocultas (só as 4 letras, sorteadas de novo) e 10 s", function () {
       var m = partida(2); abrir(m, null);
       m.passar(); m.abrirPasse(); m.aceitarPasse();
-      igual(m.estado.jogada.aberta, true);
-      igual(m.estado.jogada.tempoTotal, 10);
-      igual(m.responder(0), null, "não deveria aceitar alternativa");
+      var j = m.estado.jogada;
+      igual(j.aberta, true);
+      igual(j.tempoTotal, 10);
+      igual(j.ordemOculta.slice().sort(), [0, 1, 2, 3]);
+    });
+    teste("Letras ocultas mudam de posição em relação às alternativas vistas", function () {
+      var mudou = false;
+      for (var s = 1; s <= 10 && !mudou; s++) {
+        var m = R.novaPartida({ rodadas: 1, equipes: [{ nome: "A" }, { nome: "B" }] }, banco, semente(s));
+        abrir(m, "dobro"); var antes = m.estado.jogada.ordem.join("");
+        m.esconderAlternativas();
+        if (m.estado.jogada.ordemOculta.join("") !== antes) mudou = true;
+      }
+      verdade(mudou, "as letras nunca foram sorteadas de novo");
+    });
+    teste("Escolher a letra oculta julga sozinho e marca a resposta como oculta", function () {
+      var m = partida(2); abrir(m, "dobro", 200);
+      m.esconderAlternativas();
+      m.responder(errada(m));
+      igual(m.estado.pontos[0], -100);
+      igual(m.estado.jogada.oculta, true);
+      igual(m.estado.jogada.resultado.vaiParaPasse, true);
+    });
+    teste("Alternativa cortada pela Tesoura não volta como letra oculta", function () {
+      var m = partida(2); m.estado.tesoura[0] = true; abrir(m, "dobro");
+      m.dep.forcar("tesoura", 2); m.usarTesoura();
+      var cortadas = m.estado.jogada.eliminadas.slice();
+      m.esconderAlternativas();
+      igual(m.estado.jogada.ordemOculta.length, 2);
+      cortadas.forEach(function (c) { verdade(m.estado.jogada.ordemOculta.indexOf(c) < 0, "voltou " + c); });
+      igual(m.responder(cortadas[0]), null);
+    });
+    teste("Às cegas: a equipe escolhe uma das 4 letras ocultas", function () {
+      var m = partida(2); m.estado.asCegas[0] = true; var j = abrir(m, null, 100);
+      igual(j.ordemOculta.length, 4);
+      m.responder(certa(m));
+      igual(m.estado.pontos[0], 100);
     });
     teste("Acertou no passe: valor da carta + 50% (200 rende 300)", function () {
       var m = partida(2); abrir(m, null, 200);
-      m.passar(); m.abrirPasse(); m.aceitarPasse(); m.julgarAberta(true);
+      m.passar(); m.abrirPasse(); m.aceitarPasse(); m.responder(certa(m));
       igual(m.estado.pontos, [0, 300]);
     });
     teste("Errou no passe: gira a roleta de punição", function () {
       var m = partida(2); abrir(m, null);
-      m.passar(); m.abrirPasse(); m.aceitarPasse(); m.julgarAberta(false);
+      m.passar(); m.abrirPasse(); m.aceitarPasse(); m.responder(errada(m));
       igual(m.estado.fase, "roleta");
     });
     teste("Tempo esgotado no passe aceito conta como erro (roleta)", function () {
@@ -199,7 +233,7 @@
     });
     teste("Quem errou e perdeu metade continua com a perda depois do passe", function () {
       var m = partida(2); abrir(m, null, 400);
-      levarAoPasse(m, 1); m.aceitarPasse(); m.julgarAberta(true);
+      levarAoPasse(m, 1); m.aceitarPasse(); m.responder(certa(m));
       igual(m.estado.pontos, [-200, 600]);
     });
 
@@ -245,7 +279,7 @@
       var m = partida(2); abrir(m, "tudo", 200);
       levarAoPasse(m, 1); m.aceitarPasse();
       verdade(!m.ehArmadilha(), "a armadilha não vale no passe");
-      m.julgarAberta(true);
+      m.responder(certa(m));
       igual(m.estado.pontos, [-200, 300]);
     });
 
@@ -269,16 +303,15 @@
         m.desfazer(); e = m.estado;
       }
     });
-    teste("Depois que somem, a resposta vira aberta (Acertou / Errou)", function () {
+    teste("Depois que somem, a equipe escolhe uma letra oculta e o app julga", function () {
       var m = partida(2); abrir(m, "dobro", 100);
       m.esconderAlternativas();
-      igual(m.responder(certa(m)), null);
-      m.julgarAberta(true);
+      m.responder(certa(m));
       igual(m.estado.pontos[0], 200);
     });
     teste("No passe, vale o valor normal + 50%", function () {
       var m = partida(2); abrir(m, "dobro", 400);
-      m.passar(); m.abrirPasse(); m.aceitarPasse(); m.julgarAberta(true);
+      m.passar(); m.abrirPasse(); m.aceitarPasse(); m.responder(certa(m));
       igual(m.estado.pontos, [0, 600]);
     });
     teste("Em Dobro pode ser passado (não é armadilha)", function () {
@@ -340,7 +373,7 @@
       var m = partida(3);
       if (prep) prep(m);
       abrir(m, null, 400);
-      levarAoPasse(m, 1); m.aceitarPasse(); m.julgarAberta(false);
+      levarAoPasse(m, 1); m.aceitarPasse(); m.responder(errada(m));
       m.dep.forcar("punicao", fatia);
       m.girarPunicao();
       return m;
@@ -399,7 +432,7 @@
     teste("Chances ajustáveis nas configurações", function () {
       var ch = {}; R.FATIAS_PUNICAO.forEach(function (f) { ch[f.id] = 0; }); ch.escapou = 100;
       var m = partida(2, { chancesPunicao: ch }); abrir(m, null);
-      m.passar(); m.abrirPasse(); m.aceitarPasse(); m.julgarAberta(false); m.girarPunicao();
+      m.passar(); m.abrirPasse(); m.aceitarPasse(); m.responder(errada(m)); m.girarPunicao();
       igual(m.estado.jogada.punicao.fatia, "escapou");
     });
 
