@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  var D = window.DADOS, LOGO = window.LOGO, R = window.REGRAS, SONS = window.SONS, TEMAS = window.TEMAS || {};
+  var D = window.DADOS, LOGO = window.LOGO, R = window.REGRAS, SONS = window.SONS, VOZ = window.VOZ, TEMAS = window.TEMAS || {};
   var app = document.getElementById("app");
   var painel = document.getElementById("painel-visual");
   var CHAVE = "duelo-motor-v1";
@@ -14,7 +14,7 @@
   var REDUZIR = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   /* ---------- estado da tela ---------- */
-  var visual = { tema: "palco", modo: "escuro", fonte: "a", som: "sim" };
+  var visual = { tema: "palco", modo: "escuro", fonte: "a", som: "sim", voz: "sim", vozVel: "1", vozNome: "" };
   var config = {
     modoJogo: "sala", disciplina: "biologia", nivel: "calouro", temaArena: D.temasArena[0],
     rodadas: 2, nEquipes: 4,
@@ -115,6 +115,7 @@
     b.dataset.tela = t;
     SONS.definirTema(b.dataset.tema);
     SONS.ligar(visual.som === "sim");
+    VOZ.configurar({ ligada: visual.voz === "sim", velocidade: visual.vozVel, nome: visual.vozNome });
   }
   /* tema em uso na tela (objeto de js/tema-*.js) ou null no Palco */
   function temaObj() { return TEMAS[document.body.dataset.tema] || null; }
@@ -168,12 +169,63 @@
     app.innerHTML = html;
     desenharPainel();
     if (t === "pergunta") iniciarRelogio();
+    vozDaTela(t);
     if (ui.giro && !ui.giro.iniciado) iniciarGiro();
     if (t === "fim-rodada" && app.querySelector(".final-lista.corrida")) animarFimRodada();
     if (t === "fim" && app.querySelector(".degrau.espera")) animarFinal();
     var foco = app.querySelector("[data-foco]");
     if (foco) foco.focus({ preventScroll: true });
   }
+
+  /* ---------- voz que lê as perguntas ---------- */
+  /* cada pergunta aberta tem uma chave: a voz lê uma vez por chave (redesenhar a tela não repete a leitura) */
+  function chaveLeitura() {
+    var e = motor && E(), j = e && e.jogada;
+    return j ? [e.rodada, e.trajetoria.length, j.q, j.etapa, j.equipe, j.passe ? j.passe.equipe : ""].join("|") : null;
+  }
+  function vozDaTela(t) {
+    if (t !== "pergunta") { VOZ.parar(); return; }
+    var ch = chaveLeitura();
+    if (!VOZ.leuEsta(ch)) lerPergunta(ch);
+  }
+  /* lê o enunciado e, quando estão à vista, as alternativas com as letras da tela.
+     No passe e no Às cegas a voz lê só o enunciado. */
+  function lerPergunta(ch) {
+    var j = E().jogada, q = motor.questao(j.q), letras = ["A", "B", "C", "D"];
+    var partes = [/[.?!:]$/.test(q.enunciado.trim()) ? q.enunciado : q.enunciado + "."];
+    if (!j.aberta && !j.cegas && j.etapa !== "passe") j.ordem.forEach(function (orig, pos) {
+      if (j.eliminadas.indexOf(orig) < 0) partes.push("Letra " + letras[pos] + ": " + q.alternativas[orig] + ".");
+    });
+    VOZ.ler(partes, ch);
+  }
+  /* Em Dobro com voz: as alternativas somem aos 10 s ou, se a leitura ainda não acabou, quando ela terminar.
+     Sem voz (ou no Às cegas) vale o tempo calculado pelo motor. */
+  var DOBRO_SOMEM = 10;
+  function someComVoz(j) {
+    var ch = chaveLeitura();
+    return j.especial === "dobro" && j.etapa === "principal" && !j.cegas && VOZ.ligada() && (VOZ.falando(ch) || VOZ.falouDeVerdade(ch));
+  }
+  function horaDeEsconder(j) {
+    var passou = j.tempoTotal - j.restante;
+    if (someComVoz(j)) return passou >= DOBRO_SOMEM && !VOZ.falando(chaveLeitura());
+    return passou >= j.somemEm;
+  }
+  function segundosParaSumir(j) {
+    var passou = j.tempoTotal - j.restante;
+    return Math.max(0, Math.ceil((someComVoz(j) ? DOBRO_SOMEM : j.somemEm) - passou));
+  }
+  function seletorVoz() {
+    var lista = VOZ.vozes(), atual = visual.vozNome;
+    if (!VOZ.disponivel()) return '<p class="nota" data-voz-nome>Este navegador não tem leitura em voz alta.</p>';
+    return '<select class="campo-select" data-voz-nome aria-label="Voz da leitura">' +
+      '<option value="">Automática' + (VOZ.vozEmUso() ? ' (' + esc(VOZ.vozEmUso()) + ')' : '') + '</option>' +
+      lista.map(function (v) { return '<option value="' + esc(v.nome) + '"' + (v.nome === atual ? ' selected' : '') + '>' + esc(v.nome) + (v.local ? ' · funciona sem internet' : ' · precisa de internet') + '</option>'; }).join("") +
+    '</select>';
+  }
+  VOZ.aoMudar(function () {
+    var s = app.querySelector("select[data-voz-nome]");
+    if (s && s.options.length !== VOZ.vozes().length + 1) s.outerHTML = seletorVoz();
+  });
 
   function cenario() {
     var t = temaObj();
@@ -270,6 +322,12 @@
           '<div><h3 class="mini-titulo">Sons</h3>' +
             '<div class="chips" role="radiogroup" aria-label="Sons">' + chipVisual("som", "sim", "Ligados") + chipVisual("som", "nao", "Desligados") + '</div>' +
             '<p class="nota">No jogo, a tecla M ou o botão do alto-falante liga e desliga.</p></div>' +
+          '<div><h3 class="mini-titulo">Voz que lê as perguntas</h3>' +
+            '<div class="chips" role="radiogroup" aria-label="Voz">' + chipVisual("voz", "sim", "Ligada") + chipVisual("voz", "nao", "Desligada") + '</div>' +
+            '<div class="chips" role="radiogroup" aria-label="Velocidade da voz">' + chipVisual("vozVel", "0.85", "Lenta") + chipVisual("vozVel", "1", "Normal") + chipVisual("vozVel", "1.2", "Rápida") + '</div>' +
+            seletorVoz() +
+            '<button class="botao botao-contorno botao-pequeno" data-acao="testar-voz">Testar a voz</button>' +
+            '<p class="nota">Lê o enunciado e as alternativas assim que a pergunta abre. No passe e no Às cegas, só o enunciado. No jogo, L lê de novo.</p></div>' +
           '<div><h3 class="mini-titulo">Títulos de Biologia</h3>' +
             '<div class="chips" role="radiogroup" aria-label="Fonte dos títulos no tema de Biologia">' + chipVisual("fonte", "a", "A · Lilita One") + chipVisual("fonte", "b", "B · Fredoka") + '</div>' +
             '<p class="nota">Vale só no tema de Biologia. Os textos continuam em Atkinson.</p></div>' +
@@ -481,6 +539,7 @@
       marcar(livres[(inicio + k) % L]);
       if (k >= passos) {
         cartas.querySelector(".carta.marcada").classList.add("parou");
+        som("escolhida");
         setTimeout(function () {
           if (id !== animId) return;
           ui.sorteando = false;
@@ -491,6 +550,7 @@
         return;
       }
       var p = k / passos;
+      som("marcador", { p: p });
       k++;
       setTimeout(passo, 55 + Math.pow(p, 2.6) * 430);
     }
@@ -515,6 +575,7 @@
       if (c.especial) {
         ui.especial = { tipo: c.especial, valor: c.valor, carta: i };
         desenhar();
+        som("esp-" + c.especial);
         timerEspecial = setTimeout(fecharEspecial, espera(4200));
       } else concluirAbertura(i);
     }, espera(animada ? t.revelacaoMs : 1300));
@@ -626,9 +687,10 @@
     if (!r) {
       var bloqueado = motor.passarBloqueado();
       h += cronometro(j) +
-        (j.somemEm && !j.aberta ? '<p class="aviso-somem">As alternativas somem em <b class="somem-num">' + Math.max(0, Math.ceil(j.somemEm - (j.tempoTotal - j.restante))) + '</b> s</p>' : '') +
+        (j.somemEm && !j.aberta ? '<p class="aviso-somem">As alternativas somem em <b class="somem-num">' + segundosParaSumir(j) + '</b> s' + (j.especial === "dobro" && !j.cegas && VOZ.ligada() ? ' ou no fim da leitura' : '') + '</p>' : '') +
         '<div class="lado-acoes">' +
           '<button class="botao botao-contorno" data-acao="pausar">' + (j.pausado ? "Continuar" : "Pausar") + '</button>' +
+          (VOZ.disponivel() ? '<button class="botao botao-contorno" data-acao="ler" title="Ler a pergunta de novo (L)">Ler de novo</button>' : '') +
           (j.etapa === "principal" ? '<button class="botao botao-contorno" data-acao="passar"' + (bloqueado ? ' disabled title="Na armadilha não dá para passar"' : '') + '>' + (bloqueado ? "Passar bloqueado" : "Passar") + '</button>' : '') +
           (motor.podeUsarTesoura() ? '<button class="botao botao-tesoura" data-acao="tesoura">' + ICONE.tesoura + 'Usar Tesoura</button>' : '') +
           botaoDesfazer() +
@@ -707,7 +769,7 @@
     el.classList.toggle("alerta", seg <= 5);
     el.classList.toggle("pausado", !!j.pausado);
     var s = app.querySelector(".somem-num");
-    if (s && j.somemEm) s.textContent = Math.max(0, Math.ceil(j.somemEm - (j.tempoTotal - j.restante)));
+    if (s && j.somemEm) s.textContent = segundosParaSumir(j);
   }
   function iniciarRelogio() {
     var ultimo = performance.now();
@@ -722,11 +784,14 @@
       j.restante = Math.max(0, j.restante - dt);
       var seg = Math.ceil(j.restante);
       if (seg !== antes && seg > 0 && seg <= 5) som("tique");
-      if (j.somemEm && !j.aberta && (j.tempoTotal - j.restante) >= j.somemEm && j.restante > 0) {
+      if (j.somemEm && !j.aberta && j.restante > 0 && horaDeEsconder(j)) {
         motor.esconderAlternativas(); salvar(); desenhar(); return;
       }
       atualizarCronometro();
-      if (j.restante <= 0) { motor.tempoEsgotado(); som("tempo"); salvar(); desenhar(); }
+      if (j.restante <= 0) {
+        var armadilha = j.etapa === "principal" ? j.especial : null;
+        motor.tempoEsgotado(); som("tempo"); somDaArmadilha(armadilha, 800); salvar(); desenhar();
+      }
     }, 100);
   }
   function pararRelogio() { if (relogio) { clearInterval(relogio); relogio = null; } }
@@ -734,6 +799,7 @@
     var j = E().jogada; if (!j) return;
     j.pausado = !j.pausado;
     var b = app.querySelector('[data-acao="pausar"]'); if (b) b.textContent = j.pausado ? "Continuar" : "Pausar";
+    VOZ.pausar(j.pausado);
     atualizarCronometro();
   }
 
@@ -799,6 +865,7 @@
       });
     }
     g.final = final;
+    if (giro && !REDUZIR.matches) ouvirCatraca(giro, fatias, g);
     setTimeout(function () {
       if (ui.giro !== g) return;
       g.parado = true;
@@ -810,8 +877,29 @@
       var res = app.querySelector(".giro-resultado");
       if (res) { res.hidden = false; var b = res.querySelector("button"); if (b) b.focus(); }
       som("escolhida");
+      if (g.tipo === "tesoura") som("corte", { n: g.indice + 1 });
+      if (g.tipo === "punicao") setTimeout(function () { if (ui.giro === g) som(/escapou/i.test(g.nome) ? "escapou" : "punicao"); }, 350);
       if (g.aoParar) g.aoParar();
     }, dur + 150);
+  }
+  /* lê o ângulo da roda a cada quadro e estala quando uma divisa de fatia passa pelo ponteiro */
+  function ouvirCatraca(giro, fatias, g) {
+    var bordas = fatias.map(function (f) { return f.a0; }), ultima = null, ultimoSom = 0;
+    function regiao(ang) {
+      var a = ((360 - ang) % 360 + 360) % 360, k = 0;
+      for (var i = 0; i < bordas.length; i++) if (a >= bordas[i]) k = i;
+      return k;
+    }
+    function quadro() {
+      if (ui.giro !== g || g.parado || !giro.isConnected) return;
+      var m = getComputedStyle(giro).transform, ang = 0;
+      if (m && m !== "none") { var v = m.split("(")[1].split(")")[0].split(","); ang = Math.atan2(Number(v[1]), Number(v[0])) * 180 / Math.PI; }
+      var r = regiao(ang), agora = performance.now();
+      if (ultima !== null && r !== ultima && agora - ultimoSom > 28) { som("catraca"); ultimoSom = agora; }
+      ultima = r;
+      requestAnimationFrame(quadro);
+    }
+    requestAnimationFrame(quadro);
   }
   function rodaParada(fatias, g, classe) {
     /* depois de redesenhar, a roda continua no ângulo final */
@@ -1223,8 +1311,11 @@
       grupo("Modo", "modo", [["escuro", "Escuro"], ["claro", "Sala clara"]]) +
       (visual.tema === "biologia" ? grupo("Fonte dos títulos (Biologia)", "fonte", [["a", "A · Lilita One"], ["b", "B · Fredoka"]]) : "") +
       grupo("Sons", "som", [["sim", "Ligados"], ["nao", "Desligados"]]) +
+      grupo("Voz", "voz", [["sim", "Ligada"], ["nao", "Desligada"]]) +
       '<fieldset class="pv-grupo"><legend>Ouvir os sons do tema</legend><div class="pv-opcoes pv-linha">' +
-        [["revelar", "Revelar"], ["acertar", "Acertar"], ["errar", "Errar"], ["tique", "Últimos 5 s"], ["tempo", "Tempo esgotado"], ["passe", "Passe"], ["foco", "Sorteio"], ["escolhida", "Sorteada"]]
+        [["revelar", "Revelar"], ["acertar", "Acertar"], ["errar", "Errar"], ["tique", "Últimos 5 s"], ["tempo", "Tempo esgotado"], ["passe", "Passe"], ["foco", "Sorteio do passe"], ["escolhida", "Sorteada"],
+          ["marcador", "Marcador das cartas"], ["catraca", "Roleta girando"], ["esp-congelou", "Congelou!"], ["esp-tudo", "Tudo ou Nada"], ["esp-dobro", "Em Dobro"], ["esp-tesoura", "Tesoura"],
+          ["congelado", "Errou: congelou"], ["tudoperdido", "Errou: Tudo ou Nada"], ["moedas", "Acertou: Em Dobro"], ["poder", "Ganhou a Tesoura"], ["corte", "Tesoura cortando"], ["punicao", "Punição"], ["escapou", "Escapou!"]]
           .map(function (s) { return '<button class="pv-opcao" data-acao="ouvir" data-valor="' + s[0] + '">' + s[1] + '</button>'; }).join("") +
       '</div></fieldset>';
     if (dep) corpo += painelDepuracao();
@@ -1356,6 +1447,12 @@
         if (b.dataset.campo === "som" && v === "sim") som("foco");
         break;
       case "som": alternarSom(); break;
+      case "ler": if (telaAtual() === "pergunta") { VOZ.configurar({ ligada: true }); lerPergunta(chaveLeitura()); VOZ.configurar({ ligada: visual.voz === "sim" }); } break;
+      case "testar-voz":
+        VOZ.configurar({ ligada: true });
+        VOZ.ler(["Olá, turma! Esta é a voz que vai ler as perguntas do Duelo de Saberes.", "Letra A: fotossíntese. Letra B: respiração celular."], "teste");
+        VOZ.configurar({ ligada: visual.voz === "sim" });
+        break;
       case "ouvir": SONS.ligar(true); som(v); SONS.ligar(visual.som === "sim"); break;
 
       /* depuração */
@@ -1372,9 +1469,18 @@
   function depoisDep() { salvar(); desenhar(); }
   /* som do acerto ou do erro, logo depois de o motor julgar a resposta */
   function somDaResposta() {
-    var e = E(), r = e.jogada && e.jogada.resultado;
-    if (e.fase === "roleta" || (r && r.tipo === "erro")) som("errar");
-    else if (r && r.tipo === "acerto") som("acertar");
+    var e = E(), j = e.jogada, r = j && j.resultado, esp = j && j.etapa === "principal" ? j.especial : null;
+    if (e.fase === "roleta" || (r && r.tipo === "erro")) {
+      som("errar");
+      if (e.fase !== "roleta") somDaArmadilha(esp, 450);
+    } else if (r && r.tipo === "acerto") {
+      som(esp === "dobro" ? "moedas" : "acertar");
+      if (esp === "tesoura") setTimeout(function () { som("poder"); }, 600);
+    }
+  }
+  /* errou (ou o tempo acabou) numa armadilha: o castigo tem som próprio */
+  function somDaArmadilha(esp, atraso) {
+    if (esp === "congelou" || esp === "tudo") setTimeout(function () { som(esp === "congelou" ? "congelado" : "tudoperdido"); }, atraso);
   }
 
   function desfazer() {
@@ -1387,6 +1493,7 @@
 
   document.addEventListener("change", function (ev) {
     var t = ev.target;
+    if (t.matches && t.matches("select[data-voz-nome]")) { visual.vozNome = t.value; salvar(); aplicarVisual(telaAtual()); return; }
     if (t.dataset.dep === "ver-cartas") { ui.verCartas = t.checked; desenhar(); return; }
     if (t.dataset.dep === "especial") { motor.dep.definirEspecial(Number(t.dataset.indice), t.value || null); depoisDep(); return; }
     if (t.dataset.dep === "forcar-tesoura") { motor.dep.forcar("tesoura", t.value ? Number(t.value) : null); salvar(); return; }
@@ -1424,6 +1531,7 @@
     if (ev.key === "Escape" && ui.painelAberto) { ui.painelAberto = false; desenharPainel(); return; }
     if (!motor || tela !== "jogo") return;
     if (ev.key.toLowerCase() === "m" && !ev.ctrlKey && !ev.metaKey && !ev.altKey) { alternarSom(); return; }
+    if (ev.key.toLowerCase() === "l" && !ev.ctrlKey && !ev.metaKey && !ev.altKey && telaAtual() === "pergunta") { ev.preventDefault(); VOZ.configurar({ ligada: true }); lerPergunta(chaveLeitura()); VOZ.configurar({ ligada: visual.voz === "sim" }); return; }
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "z") { ev.preventDefault(); desfazer(); return; }
     if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
     if (ui.especial && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); fecharEspecial(); return; }

@@ -413,3 +413,12 @@ body[data-modo="claro"] .campea { text-shadow: none; }
 .botao-som { padding-left: .6rem; padding-right: .6rem; }
 .botao-som svg { width: 1.3rem; height: 1.3rem; display: block; }
 .botao-som[aria-pressed="false"] { opacity: .7; }
+
+/* ---------- voz: escolha da voz e controles na configuração ---------- */
+.campo-select {
+  width: 100%; max-width: 26rem; margin: .5rem 0; padding: .45rem .6rem; min-height: 2.4rem;
+  font: inherit; font-size: .9rem; color: var(--tinta); background: var(--painel-solido);
+  border: .1rem solid var(--borda); border-radius: .5rem;
+}
+.chips + .chips { margin-top: .4rem; }
+[data-acao="testar-voz"] { margin-top: .2rem; }
