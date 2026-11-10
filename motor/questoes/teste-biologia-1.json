@@ -1,0 +1,202 @@
+[
+  {
+    "id": "teste-bio-1-01", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 100,
+    "enunciado": "Em qual organela ocorre a respiração celular aeróbica?",
+    "alternativas": ["Mitocôndria", "Cloroplasto", "Ribossomo", "Complexo golgiense"],
+    "correta": 0,
+    "explicacao": "As etapas aeróbicas da respiração (ciclo de Krebs e cadeia respiratória) acontecem na mitocôndria.",
+    "justificativa_nivel": "Lembrar um fato direto: o local da respiração aeróbica",
+    "tempo": 20, "idioma_voz": "pt-BR", "revisado": false
+  },
+  {
+    "id": "teste-bio-1-02", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 100,
+    "enunciado": "Qual gás as plantas liberam para o ambiente durante a fotossíntese?",
+    "alternativas": ["Oxigênio (O₂)", "Gás carbônico (CO₂)", "Nitrogênio (N₂)", "Metano (CH₄)"],
+    "correta": 0,
+    "explicacao": "Na fotossíntese, a quebra da água pela luz libera O₂, que sai pelos estômatos.",
+    "justificativa_nivel": "Lembrar um produto da fotossíntese",
+    "tempo": 20, "idioma_voz": "pt-BR", "revisado": false
+  },
+  {
+    "id": "teste-bio-1-03", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 100,
+    "enunciado": "Em qual organela das células vegetais acontece a fotossíntese?",
+    "alternativas": ["Cloroplasto", "Mitocôndria", "Vacúolo", "Lisossomo"],
+    "correta": 0,
+    "explicacao": "O cloroplasto guarda a clorofila e as enzimas que transformam luz, água e CO₂ em glicose.",
+    "justificativa_nivel": "Lembrar um termo: a organela da fotossíntese",
+    "tempo": 20, "idioma_voz": "pt-BR", "revisado": false
+  },
+  {
+    "id": "teste-bio-1-04", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 100,
+    "enunciado": "Qual molécula as células usam diretamente para pagar a energia de suas atividades?",
+    "alternativas": ["ATP", "Glicose", "DNA", "Amido"],
+    "correta": 0,
+    "explicacao": "A glicose guarda energia, mas é o ATP que a entrega às reações e movimentos da célula.",
+    "justificativa_nivel": "Lembrar um termo central do metabolismo",
+    "tempo": 20, "idioma_voz": "pt-BR", "revisado": false
+  },
+  {
+    "id": "teste-bio-1-05", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 200,
+    "enunciado": "Por que a fermentação rende bem menos ATP por glicose do que a respiração aeróbica?",
+    "alternativas": ["A glicose não é toda oxidada e o produto final guarda energia", "A fermentação só acontece em bactérias", "A fermentação gasta oxigênio para funcionar", "A fermentação não usa glicose como combustível"],
+    "correta": 0,
+    "explicacao": "Na fermentação a glicose para no etanol ou no ácido lático, moléculas que ainda têm muita energia.",
+    "justificativa_nivel": "Explicar um conceito: a diferença de rendimento energético",
+    "tempo": 20, "idioma_voz": "pt-BR", "revisado": false
+  },
+  {
+    "id": "teste-bio-1-06", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 200,
+    "enunciado": "Qual é o papel do oxigênio na respiração celular aeróbica?",
+    "alternativas": ["Receber os elétrons no fim da cadeia respiratória", "Quebrar a glicose no início da glicólise", "Fornecer o carbono que forma o ATP", "Ser liberado como produto do ciclo de Krebs"],
+    "correta": 0,
+    "explicacao": "O O₂ é o aceptor final de elétrons: recebe-os no fim da cadeia e forma água.",
+    "justificativa_nivel": "Reconhecer a função de um participante do processo",
+    "tempo": 20, "idioma_voz": "pt-BR", "revisado": false
+  },
+  {
+    "id": "teste-bio-1-07", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 200,
+    "enunciado": "Qual é a função da clorofila na fotossíntese?",
+    "alternativas": ["Absorver a energia da luz", "Fornecer o CO₂ usado na reação", "Armazenar a glicose produzida", "Retirar a água do solo"],
+    "correta": 0,
+    "explicacao": "A clorofila é o pigmento que capta a luz e inicia a conversão da energia luminosa em química.",
+    "justificativa_nivel": "Explicar a função de um componente do conceito",
+    "tempo": 20, "idioma_voz": "pt-BR", "revisado": false
+  },
+  {
+    "id": "teste-bio-1-08", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 200,
+    "enunciado": "O que diferencia a fermentação alcoólica da fermentação lática?",
+    "alternativas": ["A alcoólica forma etanol e CO₂; a lática forma ácido lático", "A alcoólica forma ácido lático; a lática forma etanol", "As duas formam etanol, mas só a lática libera O₂", "Só a lática precisa de glicose para acontecer"],
+    "correta": 0,
+    "explicacao": "Leveduras fazem a alcoólica (etanol + CO₂); bactérias láticas e músculos fazem a lática.",
+    "justificativa_nivel": "Reconhecer e comparar dois conceitos próximos",
+    "tempo": 20, "idioma_voz": "pt-BR", "revisado": false
+  },
+  {
+    "id": "teste-bio-1-09", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 300,
+    "enunciado": "Por que a massa do pão cresce quando usamos fermento biológico?",
+    "alternativas": ["As leveduras liberam CO₂ na fermentação", "As leveduras liberam O₂ na massa", "O açúcar da massa evapora no forno", "O fermento produz ácido lático"],
+    "correta": 0,
+    "explicacao": "Na fermentação alcoólica, a glicose vira etanol e CO₂; as bolhas de gás fazem a massa crescer.",
+    "justificativa_nivel": "Aplica o conceito numa situação do dia a dia",
+    "tempo": 20, "idioma_voz": "pt-BR", "revisado": false
+  },
+  {
+    "id": "teste-bio-1-10", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 300,
+    "enunciado": "Num exercício muito intenso, as fibras musculares recebem pouco O₂. Que processo elas passam a usar para obter ATP?",
+    "alternativas": ["Fermentação lática", "Fermentação alcoólica", "Fotossíntese", "Respiração aeróbica acelerada"],
+    "correta": 0,
+    "explicacao": "Com pouco O₂, o músculo transforma o piruvato em ácido lático e mantém a glicólise funcionando.",
+    "justificativa_nivel": "Aplica o conceito de fermentação ao corpo durante o exercício",
+    "tempo": 20, "idioma_voz": "pt-BR", "revisado": false
+  },
+  {
+    "id": "teste-bio-1-11", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 300,
+    "enunciado": "Por que frutas guardadas na geladeira demoram mais para amadurecer e estragar?",
+    "alternativas": ["O frio deixa mais lentas as enzimas da respiração e dos fungos", "O frio mata todos os micro-organismos da fruta", "O frio faz a fruta fazer mais fotossíntese", "O frio retira todo o oxigênio de dentro da fruta"],
+    "correta": 0,
+    "explicacao": "Temperaturas baixas reduzem a atividade das enzimas, então a fruta e os decompositores respiram menos.",
+    "justificativa_nivel": "Aplica o efeito da temperatura nas enzimas numa situação cotidiana",
+    "tempo": 20, "idioma_voz": "pt-BR", "revisado": false
+  },
+  {
+    "id": "teste-bio-1-12", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 300,
+    "enunciado": "Na produção de vinho, o tanque com suco de uva e leveduras fica fechado. Por quê?",
+    "alternativas": ["Sem O₂, as leveduras fermentam e produzem etanol", "Fechado, a uva continua fazendo fotossíntese", "O fechamento impede a saída do etanol como gás", "Assim as leveduras fazem só respiração aeróbica"],
+    "correta": 0,
+    "explicacao": "Sem oxigênio, as leveduras trocam a respiração pela fermentação alcoólica, que gera o álcool do vinho.",
+    "justificativa_nivel": "Aplica o conceito de fermentação num processo produtivo conhecido",
+    "tempo": 20, "idioma_voz": "pt-BR", "revisado": false
+  },
+  {
+    "id": "teste-bio-1-13", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 400,
+    "enunciado": "Uma elódea iluminada solta bolhas na água. Se a luz aumentar e o CO₂ dissolvido acabar, o que acontece com as bolhas?",
+    "alternativas": ["Diminuem, pois falta CO₂ para a fotossíntese", "Aumentam, pois mais luz sempre gera mais O₂", "Ficam iguais, pois só a luz controla a reação", "Aumentam, pois a planta passa a respirar mais"],
+    "correta": 0,
+    "explicacao": "Sem CO₂ a fotossíntese para, mesmo com luz. Menos fotossíntese, menos O₂ nas bolhas.",
+    "justificativa_nivel": "Interpreta um experimento relacionando dois fatores limitantes",
+    "tempo": 20, "idioma_voz": "pt-BR", "revisado": false
+  },
+  {
+    "id": "teste-bio-1-14", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 400,
+    "enunciado": "Dois frascos com água, açúcar e fermento têm um balão na boca. Um deles foi fervido depois de receber o fermento. O que se espera?",
+    "alternativas": ["Só o frasco não fervido enche o balão", "Os dois enchem igual, pois o açúcar solta gás", "Só o fervido enche, pois o calor acelera tudo", "Nenhum enche, pois a fermentação exige luz"],
+    "correta": 0,
+    "explicacao": "A fervura mata as leveduras. Só no frasco com leveduras vivas há fermentação e CO₂ para encher o balão.",
+    "justificativa_nivel": "Interpreta um experimento com controle, relacionando seres vivos e fermentação",
+    "tempo": 20, "idioma_voz": "pt-BR", "revisado": false
+  },
+  {
+    "id": "teste-bio-1-15", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 400,
+    "enunciado": "Ao meio-dia, uma planta absorve mais CO₂ do que libera. À noite acontece o contrário. Por quê?",
+    "alternativas": ["De dia a fotossíntese supera a respiração; à noite só há respiração", "De dia a planta não respira; à noite ela só faz fotossíntese", "À noite a fotossíntese passa a consumir O₂ e liberar CO₂", "A respiração das plantas só acontece no escuro"],
+    "correta": 0,
+    "explicacao": "A planta respira o tempo todo. De dia a fotossíntese consome mais CO₂ do que a respiração libera.",
+    "justificativa_nivel": "Relaciona dois processos que acontecem ao mesmo tempo",
+    "tempo": 20, "idioma_voz": "pt-BR", "revisado": false
+  },
+  {
+    "id": "teste-bio-1-16", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 400,
+    "enunciado": "Uma levedura obtém 2 ATP por glicose sem O₂ e cerca de 30 com O₂. Para crescer o mesmo tanto, quando ela gasta menos açúcar?",
+    "alternativas": ["Com O₂, pois cada glicose rende muito mais ATP", "Sem O₂, pois a fermentação é mais rápida", "Tanto faz, pois o ATP não depende do O₂", "Sem O₂, pois o oxigênio consome o açúcar"],
+    "correta": 0,
+    "explicacao": "Com O₂ cada glicose rende cerca de 15 vezes mais ATP, então a levedura precisa de muito menos açúcar.",
+    "justificativa_nivel": "Interpreta dados numéricos relacionando rendimento e consumo",
+    "tempo": 20, "idioma_voz": "pt-BR", "revisado": false
+  },
+  {
+    "id": "teste-bio-1-17", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 500,
+    "enunciado": "O cianeto bloqueia a cadeia respiratória. O que acontece com o consumo de O₂, a produção de ATP e a glicólise?",
+    "alternativas": ["O₂ cai, ATP cai muito e a glicólise acelera", "O₂ sobe, ATP cai e a glicólise para", "O₂ cai, ATP sobe e a glicólise para", "O₂ e ATP não mudam; só a glicólise para"],
+    "correta": 0,
+    "explicacao": "Sem cadeia, o O₂ não é usado e quase não há ATP. A célula acelera a glicólise para compensar.",
+    "justificativa_nivel": "Raciocínio em várias etapas sobre três variáveis, com distratores muito próximos",
+    "tempo": 25, "idioma_voz": "pt-BR", "revisado": false
+  },
+  {
+    "id": "teste-bio-1-18", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 500,
+    "enunciado": "Uma planta fica dias no escuro, numa redoma com O₂ marcado (¹⁸O). Em que substância o ¹⁸O aparece primeiro?",
+    "alternativas": ["Na água formada na respiração", "No CO₂ liberado pela respiração", "Na glicose formada na fotossíntese", "No O₂ liberado pelas folhas"],
+    "correta": 0,
+    "explicacao": "No escuro não há fotossíntese. Na respiração, o O₂ recebe elétrons e hidrogênio e vira água.",
+    "justificativa_nivel": "Exige excluir a fotossíntese e seguir o destino do O₂ na respiração, em várias etapas",
+    "tempo": 25, "idioma_voz": "pt-BR", "revisado": false
+  },
+  {
+    "id": "teste-bio-1-19", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 500,
+    "enunciado": "Uma substância deixa a membrana interna da mitocôndria vazar íons H⁺. Quem é intoxicado tem febre. Por quê?",
+    "alternativas": ["A energia do gradiente vira calor em vez de ATP", "A substância produz ATP em excesso, que aquece", "A glicólise para e o ácido acumulado aquece", "O corpo para de usar O₂ e retém calor"],
+    "correta": 0,
+    "explicacao": "O fluxo de H⁺ é o que move a produção de ATP. Se ele vaza, a energia se dissipa como calor.",
+    "justificativa_nivel": "Relaciona gradiente de prótons, síntese de ATP e calor em várias etapas, nível ENEM difícil",
+    "tempo": 25, "idioma_voz": "pt-BR", "revisado": false
+  },
+  {
+    "id": "teste-bio-1-20", "modo": "sala", "disciplina": "biologia", "serie": 1,
+    "assunto": "metabolismo energético", "valor": 500,
+    "enunciado": "Sob luz fraca e constante, uma planta faz tanta fotossíntese quanto respiração. Mantida assim por semanas, o que ocorre com sua massa seca?",
+    "alternativas": ["Não aumenta, pois não sobra matéria orgânica", "Aumenta, pois a planta faz fotossíntese", "Aumenta, pois a respiração libera energia", "Diminui, pois a respiração supera a fotossíntese"],
+    "correta": 0,
+    "explicacao": "No ponto de compensação tudo o que é produzido é consumido. Sem saldo de matéria orgânica, a planta não cresce.",
+    "justificativa_nivel": "Exige concluir o saldo entre dois processos e aplicá-lo ao crescimento, com distratores próximos",
+    "tempo": 30, "idioma_voz": "pt-BR", "revisado": false
+  }
+]
