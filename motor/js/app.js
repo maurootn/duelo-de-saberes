@@ -6,15 +6,16 @@
 (function () {
   "use strict";
 
-  var D = window.DADOS, LOGO = window.LOGO, R = window.REGRAS, SONS = window.SONS, VOZ = window.VOZ, TEMAS = window.TEMAS || {};
+  var D = window.DADOS, LOGO = window.LOGO, R = window.REGRAS, SONS = window.SONS, VOZ = window.VOZ, TEMAS = (window.TEMAS = window.TEMAS || {});
   var app = document.getElementById("app");
   var painel = document.getElementById("painel-visual");
   var CHAVE = "duelo-motor-v1";
-  var ARQUIVO_BANCO = "questoes/teste-biologia-1.json";
+  /* lista das disciplinas: quais estão prontas, se têm tema e quais arquivos de questões usam */
+  var ARQUIVO_DISCIPLINAS = "disciplinas.json";
   var REDUZIR = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   /* ---------- estado da tela ---------- */
-  var visual = { tema: "palco", modo: "escuro", fonte: "a", som: "sim", voz: "sim", vozVel: "1", vozNome: "" };
+  var visual = { tema: "palco", modo: "escuro", fontes: {}, som: "sim", voz: "sim", vozVel: "1", vozNome: "" };
   var config = {
     modoJogo: "sala", disciplina: "biologia", nivel: "calouro", temaArena: D.temasArena[0],
     rodadas: 2, nEquipes: 4,
@@ -24,7 +25,8 @@
     chancesPunicao: chancesPadraoPunicao()
   };
   var recentes = [];
-  var banco = null, erroBanco = null;
+  /* bancos: questões já carregadas, por disciplina. carregado: disciplinas, temas e questões prontos */
+  var bancos = {}, carregado = false, erroBanco = null, disciplinaSalva = null;
   var motor = null;
   var tela = "inicio";
   var salvo = null; // partida salva encontrada ao abrir
@@ -47,6 +49,8 @@
       var s = JSON.parse(localStorage.getItem(CHAVE) || "null");
       if (!s) return;
       if (s.visual) Object.keys(visual).forEach(function (k) { if (k in s.visual) visual[k] = s.visual[k]; });
+      if (s.visual && s.visual.fonte && !visual.fontes.biologia) visual.fontes.biologia = s.visual.fonte;   // versão anterior: uma fonte só
+      if (s.disciplinaPartida) disciplinaSalva = s.disciplinaPartida;
       if (s.config) Object.keys(config).forEach(function (k) { if (k in s.config) config[k] = s.config[k]; });
       if (s.recentes) recentes = s.recentes;
       if (s.partida && s.partida.fase && s.partida.fase !== "fim") salvo = s.partida;
@@ -56,16 +60,57 @@
     try {
       var p = motor && E().fase !== "fim" ? E() : null;
       if (motor) recentes = E().usadas.slice(-300);
-      localStorage.setItem(CHAVE, JSON.stringify({ visual: visual, config: config, recentes: recentes, partida: p }));
+      localStorage.setItem(CHAVE, JSON.stringify({ visual: visual, config: config, recentes: recentes, partida: p, disciplinaPartida: p ? (disciplinaSalva || config.disciplina) : null }));
     } catch (e) {}
   }
 
-  function carregarBanco() {
-    return fetch(ARQUIVO_BANCO, { cache: "no-cache" })
-      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-      .then(function (lista) { banco = lista; })
-      .catch(function (e) { erroBanco = "Não consegui abrir " + ARQUIVO_BANCO + " (" + e.message + "). Abra o jogo pelo endereço do GitHub Pages ou por um servidor local."; });
+  /* ---------- carregamento: disciplinas, temas e questões ----------
+     Uma disciplina nova entra só com arquivos novos: temas/<id>/tema.js e tema.css, as questões em questoes/
+     e uma linha em disciplinas.json. Nada no código do jogo precisa mudar. */
+  function buscarJson(url) {
+    return fetch(url, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error(url + ": HTTP " + r.status); return r.json(); });
   }
+  function carregarArquivo(tag, attrs) {
+    return new Promise(function (ok) {
+      var el = document.createElement(tag);
+      Object.keys(attrs).forEach(function (k) { el[k] = attrs[k]; });
+      el.onload = function () { ok(true); };
+      el.onerror = function () { ok(false); };   // tema que não abre: a disciplina joga com o Palco
+      document.head.appendChild(el);
+    });
+  }
+  function carregarTudo() {
+    return buscarJson(ARQUIVO_DISCIPLINAS).then(function (d) {
+      D.disciplinas = d.disciplinas.map(function (x) { return { id: x.id, nome: x.nome, pronta: !!x.pronta, tema: !!x.tema, questoes: x.questoes || [] }; });
+      if (!prontaDisc(config.disciplina)) { var p = D.disciplinas.filter(function (x) { return x.pronta; })[0]; if (p) config.disciplina = p.id; }
+      var temas = D.disciplinas.filter(function (x) { return x.pronta && x.tema; }).map(function (x) {
+        return Promise.all([
+          carregarArquivo("link", { rel: "stylesheet", href: "temas/" + x.id + "/tema.css" }),
+          carregarArquivo("script", { src: "temas/" + x.id + "/tema.js" })
+        ]);
+      });
+      var questoes = D.disciplinas.filter(function (x) { return x.pronta; }).map(function (x) {
+        return Promise.all(x.questoes.map(function (arq) {
+          return buscarJson(arq).catch(function (e) { erroBanco = "Não consegui abrir " + arq + " (" + e.message + ")."; return []; });
+        })).then(function (listas) { bancos[x.id] = [].concat.apply([], listas); });
+      });
+      return Promise.all(temas.concat(questoes));
+    }).catch(function (e) {
+      erroBanco = "Não consegui abrir as questões (" + e.message + "). Abra o jogo pelo endereço do GitHub Pages ou por um servidor local.";
+    }).then(function () { carregado = true; });
+  }
+  /* temas carregados, na ordem do menu de disciplinas (os arquivos chegam em qualquer ordem) */
+  function temasEmOrdem() {
+    var ordem = D.disciplinas.map(function (d) { return d.id; });
+    return Object.keys(TEMAS).sort(function (a, b) { return ordem.indexOf(a) - ordem.indexOf(b); });
+  }
+  function prontaDisc(id) { for (var i = 0; i < D.disciplinas.length; i++) if (D.disciplinas[i].id === id) return D.disciplinas[i].pronta !== false; return false; }
+  /* questões da partida: as da disciplina escolhida; na Arena (ainda sem banco próprio), todas as carregadas */
+  function bancoDe(disc, modo) {
+    if (modo === "arena") return [].concat.apply([], Object.keys(bancos).map(function (k) { return bancos[k]; }));
+    return bancos[disc] || [];
+  }
+  function bancoAtual() { return bancoDe(config.disciplina, config.modoJogo); }
 
   /* ---------- utilidades ---------- */
   function esc(t) {
@@ -111,7 +156,7 @@
     var emJogo = t !== "inicio" && t !== "config";
     b.dataset.tema = emJogo ? visual.tema : "palco";
     b.dataset.modo = visual.modo;
-    b.dataset.fonte = visual.fonte;
+    b.dataset.fonte = visual.fontes[b.dataset.tema] || "a";
     b.dataset.tela = t;
     SONS.definirTema(b.dataset.tema);
     SONS.ligar(visual.som === "sim");
@@ -236,8 +281,8 @@
         '<p class="inicio-frase">Vinte cartas viradas, perguntas de 100 a 500 e uma equipe de olho na outra.</p>' +
         (erroBanco ? '<p class="alerta-banco" role="alert">' + esc(erroBanco) + '</p>' : '') +
         '<div class="inicio-acoes">' +
-          (salvo && banco ? '<button class="botao botao-principal botao-enorme" data-acao="continuar-salva" data-foco>Continuar partida</button>' : '') +
-          '<button class="botao ' + (salvo && banco ? 'botao-contorno' : 'botao-principal botao-enorme') + '" data-acao="ir-config"' + (salvo && banco ? '' : ' data-foco') + '>Nova partida</button>' +
+          (salvo && carregado ? '<button class="botao botao-principal botao-enorme" data-acao="continuar-salva" data-foco>Continuar partida</button>' : '') +
+          '<button class="botao ' + (salvo && carregado ? 'botao-contorno' : 'botao-principal botao-enorme') + '" data-acao="ir-config"' + (salvo && carregado ? '' : ' data-foco') + '>Nova partida</button>' +
           '<a class="botao botao-contorno" href="testes.html">Lista de testes</a>' +
         '</div>' +
       '</div>' +
@@ -274,9 +319,12 @@
       h += '<section class="bloco">' +
         '<h2>Disciplina</h2>' +
         '<div class="chips" role="radiogroup" aria-label="Disciplina">' +
-          D.disciplinas.map(function (d) { return chip("disciplina", d.id, d.nome); }).join("") +
+          D.disciplinas.map(function (d) {
+            if (d.pronta === false) return '<button class="chip chip-breve" disabled aria-disabled="true" title="Em breve">' + esc(d.nome) + '<small>em breve</small></button>';
+            return chip("disciplina", d.id, d.nome);
+          }).join("") +
         '</div>' +
-        '<p class="nota">Nesta fase, qualquer disciplina usa as 20 questões de teste (Biologia, 1º ano). Os bancos reais chegam na Fase 8.</p>' +
+        '<p class="nota">Por enquanto, Biologia e Química têm 20 questões de teste cada (1º ano). Os bancos reais chegam na Fase 8.</p>' +
       '</section>' +
       '<section class="bloco bloco-nivel">' +
         '<h2>Nível</h2>' +
@@ -310,7 +358,7 @@
         '<div class="regras-grade regras-grade-4">' +
           '<div><h3 class="mini-titulo">Tema da partida</h3>' +
             '<div class="chips" role="radiogroup" aria-label="Tema da partida">' + chip("temaVisual", "disciplina", "Tema da disciplina") + chip("temaVisual", "palco", "Palco") + '</div>' +
-            '<p class="nota">' + (temaDaPartida() === "palco" ? (config.temaVisual === "palco" ? "A partida usa o Palco." : "Esta escolha ainda não tem tema próprio: a partida usa o Palco.") : "A partida usa o tema de " + esc(achar(D.disciplinas, config.disciplina).nome) + ".") + ' Por enquanto, só Biologia tem tema.</p></div>' +
+            '<p class="nota">' + (temaDaPartida() === "palco" ? (config.temaVisual === "palco" ? "A partida usa o Palco." : "Esta escolha ainda não tem tema próprio: a partida usa o Palco.") : "A partida usa o tema de " + esc(achar(D.disciplinas, config.disciplina).nome) + ".") + ' Têm tema próprio: ' + esc(temasEmOrdem().map(function (id) { return TEMAS[id].nome; }).join(" e ") || "nenhuma") + '.</p></div>' +
           '<div><h3 class="mini-titulo">Versão</h3>' +
             '<div class="chips" role="radiogroup" aria-label="Versão clara ou escura">' + chipVisual("modo", "escuro", "Escuro") + chipVisual("modo", "claro", "Sala clara") + '</div>' +
             '<p class="nota">Escuro para sala com pouca luz; Sala clara para projetor em sala iluminada.</p></div>' +
@@ -323,9 +371,7 @@
             seletorVoz() +
             '<button class="botao botao-contorno botao-pequeno" data-acao="testar-voz">Testar a voz</button>' +
             '<p class="nota">Lê só o enunciado, assim que a pergunta abre; as alternativas nunca são lidas. No jogo, L lê de novo.</p></div>' +
-          '<div><h3 class="mini-titulo">Títulos de Biologia</h3>' +
-            '<div class="chips" role="radiogroup" aria-label="Fonte dos títulos no tema de Biologia">' + chipVisual("fonte", "a", "A · Lilita One") + chipVisual("fonte", "b", "B · Fredoka") + '</div>' +
-            '<p class="nota">Vale só no tema de Biologia. Os textos continuam em Atkinson.</p></div>' +
+          escolhaDeFontes() +
         '</div>' +
       '</section>' +
 
@@ -356,7 +402,7 @@
       '</div>' +
       '<div class="config-rodape">' +
         '<span class="config-resumo">' + esc(nomeTema()) + ' · ' + config.rodadas + (config.rodadas > 1 ? ' rodadas' : ' rodada') + ' · ' + config.nEquipes + ' equipes</span>' +
-        '<button class="botao botao-principal botao-enorme" data-acao="comecar"' + (banco ? '' : ' disabled') + '>' + (banco ? 'Começar partida' : 'Carregando questões…') + '</button>' +
+        '<button class="botao botao-principal botao-enorme" data-acao="comecar"' + (bancoAtual().length ? '' : ' disabled') + '>' + (!carregado ? 'Carregando questões…' : bancoAtual().length ? 'Começar partida' : 'Sem questões') + '</button>' +
       '</div>' +
     '</main>';
     return h;
@@ -377,6 +423,20 @@
   function chip(campo, valor, titulo) {
     var on = config[campo] === valor;
     return '<button class="chip' + (on ? " ativa" : "") + '" role="radio" aria-checked="' + on + '" data-acao="escolher" data-campo="' + campo + '" data-valor="' + esc(valor) + '">' + esc(titulo) + '</button>';
+  }
+  /* cada tema com fontes próprias ganha a sua escolha de fonte dos títulos */
+  function chipFonte(tema, valor, titulo) {
+    var on = (visual.fontes[tema] || "a") === valor;
+    return '<button class="chip' + (on ? " ativa" : "") + '" role="radio" aria-checked="' + on + '" data-acao="fonte-tema" data-tema="' + tema + '" data-valor="' + valor + '">' + titulo + '</button>';
+  }
+  function escolhaDeFontes() {
+    return temasEmOrdem().filter(function (id) { return TEMAS[id].fontes && TEMAS[id].fontes.length > 1; }).map(function (id) {
+      var t = TEMAS[id];
+      return '<div><h3 class="mini-titulo">Títulos de ' + esc(t.nome) + '</h3>' +
+        '<div class="chips" role="radiogroup" aria-label="Fonte dos títulos no tema de ' + esc(t.nome) + '">' +
+          t.fontes.map(function (f, k) { return chipFonte(id, f.id, String.fromCharCode(65 + k) + " · " + esc(f.nome)); }).join("") + '</div>' +
+        '<p class="nota">Vale só no tema de ' + esc(t.nome) + '. Os textos continuam em Atkinson.</p></div>';
+    }).join("");
   }
   function chipVisual(campo, valor, titulo) {
     var on = visual[campo] === valor;
@@ -412,7 +472,9 @@
 
   /* ---------- começo da partida ---------- */
   function comecarPartida() {
-    if (!banco) return;
+    var banco = bancoAtual();
+    if (!banco.length) return;
+    disciplinaSalva = config.modoJogo === "arena" ? "arena" : config.disciplina;
     visual.tema = temaDaPartida();
     motor = R.novaPartida({
       rodadas: config.rodadas, nivel: config.modoJogo === "sala" ? config.nivel : "calouro",
@@ -843,7 +905,7 @@
 
   function iniciarGiro() {
     var g = ui.giro; g.iniciado = true;
-    if (g.microscopio) { sortearNoMicroscopio(g); return; }
+    if (g.doTema) { sortearNoTema(g); return; }
     var giro = app.querySelector(".roda-giro"), fatias = g.fatias, f = fatias[g.indice];
     var largura = f.a1 - f.a0, centro = f.a0 + largura / 2 + (Math.random() - .5) * largura * .55;
     var final = 360 * (REDUZIR.matches ? 1 : 6) + (360 - centro);
@@ -935,11 +997,11 @@
       '</header>' +
       '<div class="passe-centro">';
     var t = temaObj();
-    if (t && t.microscopio) {
+    if (t && t.passe) {
       /* tema com tela própria de passe: as equipes que podem receber aparecem no campo de visão */
       var lista = mostrarRoda ? p.elegiveis : (p.equipe !== null ? [p.equipe] : []);
       var foco = escolhido ? lista.indexOf(p.equipe) : -1;
-      if (lista.length) h += t.microscopio(lista.map(function (i) { var q = eqp(i); return { nome: esc(q.nome), cor: corHex(q.cor), ficha: ficha(q) }; }),
+      if (lista.length) h += t.passe(lista.map(function (i) { var q = eqp(i); return { nome: esc(q.nome), cor: corHex(q.cor), ficha: ficha(q) }; }),
         foco >= 0 ? foco : null, escolhido ? "pequeno" : "", "Passe<br>" + j.valor);
       if (mostrarRoda && !p.sorteado) h += '<button class="botao botao-principal botao-enorme" data-acao="sortear-passe" data-foco>Sortear quem recebe</button>';
       if (!mostrarRoda) h += '<p class="passe-direto">' + (e.equipes.length === 2 ? "Com duas equipes, a outra recebe direto." : "Só uma equipe pode receber agora.") + '</p>';
@@ -969,13 +1031,13 @@
     if (eq === null) return;
     salvar();
     var t = temaObj();
-    ui.giro = { tipo: "passe", microscopio: !!(t && t.sortear), fatias: fatiasPasse(j.passe.elegiveis), indice: j.passe.elegiveis.indexOf(eq),
+    ui.giro = { tipo: "passe", doTema: !!(t && t.passe && t.sortear), fatias: fatiasPasse(j.passe.elegiveis), indice: j.passe.elegiveis.indexOf(eq),
       aoParar: function () { setTimeout(function () { if (ui.giro && ui.giro.tipo === "passe") desenhar(); }, espera(700)); } };
     desenhar();
   }
 
   /* sorteio do passe nos temas com tela própria: o foco pula de equipe em equipe até travar na sorteada */
-  function sortearNoMicroscopio(g) {
+  function sortearNoTema(g) {
     temaObj().sortear(app, g.indice, {
       reduzir: REDUZIR.matches,
       vivo: function () { return ui.giro === g; },
@@ -1302,9 +1364,14 @@
         return '<button class="pv-opcao' + (on ? " ativa" : "") + '" aria-pressed="' + on + '" data-acao="visual" data-campo="' + campo + '" data-valor="' + it[0] + '">' + it[1] + '</button>';
       }).join("") + '</div></fieldset>';
     }
-    var corpo = grupo("Tema", "tema", [["palco", "Palco"], ["biologia", "Biologia"]]) +
+    var tAtual = TEMAS[visual.tema];
+    var corpo = grupo("Tema", "tema", [["palco", "Palco"]].concat(temasEmOrdem().map(function (id) { return [id, TEMAS[id].nome]; }))) +
       grupo("Modo", "modo", [["escuro", "Escuro"], ["claro", "Sala clara"]]) +
-      (visual.tema === "biologia" ? grupo("Fonte dos títulos (Biologia)", "fonte", [["a", "A · Lilita One"], ["b", "B · Fredoka"]]) : "") +
+      (tAtual && tAtual.fontes && tAtual.fontes.length > 1 ? '<fieldset class="pv-grupo"><legend>Fonte dos títulos (' + esc(tAtual.nome) + ')</legend><div class="pv-opcoes pv-linha">' +
+        tAtual.fontes.map(function (f, k) {
+          var on = (visual.fontes[visual.tema] || "a") === f.id;
+          return '<button class="pv-opcao' + (on ? " ativa" : "") + '" aria-pressed="' + on + '" data-acao="fonte-tema" data-tema="' + visual.tema + '" data-valor="' + f.id + '">' + String.fromCharCode(65 + k) + " · " + esc(f.nome) + '</button>';
+        }).join("") + '</div></fieldset>' : "") +
       grupo("Sons", "som", [["sim", "Ligados"], ["nao", "Desligados"]]) +
       grupo("Voz", "voz", [["sim", "Ligada"], ["nao", "Desligada"]]) +
       '<fieldset class="pv-grupo"><legend>Ouvir os sons do tema</legend><div class="pv-opcoes pv-linha">' +
@@ -1387,7 +1454,7 @@
       case "ir-config": tela = "config"; motor = null; limparUi(); salvar(); desenhar(); break;
       case "sair": tela = "inicio"; motor = null; limparUi(); salvar(); desenhar(); break;
       case "continuar-salva":
-        motor = R.retomar(salvo, banco || []); salvo = null; tela = "jogo"; limparUi();
+        motor = R.retomar(salvo, bancoDe(disciplinaSalva || config.disciplina, disciplinaSalva === "arena" ? "arena" : "sala")); salvo = null; tela = "jogo"; limparUi();
         if (E().jogada) E().jogada.pausado = true;
         if (E().fase === "roleta" && E().jogada.punicao) E().fase = "resultado";
         visual.tema = temaDaPartida();
@@ -1442,6 +1509,10 @@
         if (b.dataset.campo === "som" && v === "sim") som("foco");
         break;
       case "som": alternarSom(); break;
+      case "fonte-tema":
+        visual.fontes[b.dataset.tema] = v; salvar(); aplicarVisual(telaAtual()); desenharPainel();
+        if (tela === "config") desenhar();
+        break;
       case "ler": if (telaAtual() === "pergunta") { VOZ.configurar({ ligada: true }); lerPergunta(chaveLeitura()); VOZ.configurar({ ligada: visual.voz === "sim" }); } break;
       case "testar-voz":
         VOZ.configurar({ ligada: true });
@@ -1544,9 +1615,9 @@
   carregar();
   corrigirCores();
   desenhar();
-  carregarBanco().then(function () {
-    if (salvo && banco) {
-      try { R.retomar(salvo, banco); } catch (e) { salvo = null; }
+  carregarTudo().then(function () {
+    if (salvo) {
+      try { R.retomar(salvo, bancoDe(disciplinaSalva || config.disciplina, disciplinaSalva === "arena" ? "arena" : "sala")); } catch (e) { salvo = null; }
     }
     desenhar();
   });

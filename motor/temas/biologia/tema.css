@@ -5,8 +5,8 @@
    Tabuleiro, placar, cronômetro e especiais ficam no mesmo lugar. */
 
 /* ---------- fontes dos títulos (Google Fonts, licença OFL, embutidas) ---------- */
-@font-face { font-family: "Lilita One"; src: url("../fontes/lilita-one-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
-@font-face { font-family: "Fredoka Titulo"; src: url("../fontes/fredoka-latin-700-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Lilita One"; src: url("../../fontes/lilita-one-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Fredoka Titulo"; src: url("../../fontes/fredoka-latin-700-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
 
 /* ---------- variáveis: campo escuro ---------- */
 body[data-tema="biologia"] {

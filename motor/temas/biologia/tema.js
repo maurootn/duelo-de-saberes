@@ -1,9 +1,12 @@
 /* Duelo de Saberes 2.0 · Tema de Biologia (Fase 5)
+   Pacote do tema: este arquivo + tema.css, na pasta temas/biologia/. O app carrega os dois sozinho
+   quando disciplinas.json marca a Biologia com "tema": true.
    Universo: microscopia e células. O que este arquivo desenha:
    - o campo do microscópio ao fundo, com microrganismos à deriva;
    - a revelação da carta: a célula se divide em mitose e mostra o valor;
    - a tela do passe: lâmina sob o microscópio, com o sorteio no campo de visão.
-   As cores e as animações ficam em css/tema-biologia.css. Todos os desenhos são originais. */
+   - os sons do universo (bolhas, gotas, batimento), registrados em SONS.
+   As cores e as animações ficam em tema.css. Todos os desenhos são originais. */
 
 window.TEMAS = window.TEMAS || {};
 window.TEMAS.biologia = (function () {
@@ -106,7 +109,7 @@ window.TEMAS.biologia = (function () {
     var raio = n === 2 ? 0.22 : 0.27, ang = (-90 + k * 360 / n) * Math.PI / 180;
     return [raio * Math.cos(ang), raio * Math.sin(ang)];
   }
-  /* celulas: [{ nome, cor, ficha }] · foco: índice da célula em foco (ou null) · classe: "pequeno" depois do sorteio */
+  /* tela do passe. celulas: [{ nome, cor, ficha }] · foco: índice da célula em foco (ou null) · classe: "pequeno" depois do sorteio */
   function microscopio(celulas, foco, classe, etiqueta) {
     var n = celulas.length, estilo = "";
     if (foco !== null && foco !== undefined && celulas[foco]) {
@@ -163,12 +166,59 @@ window.TEMAS.biologia = (function () {
     passo();
   }
 
+  /* ---------- sons: bolhas, gotas e batimento ---------- */
+  var P = window.SONS.pecas, nota = P.nota, sopro = P.sopro, bolha = P.bolha, sino = P.sino;
+  window.SONS.registrar("biologia", {
+      /* acompanha a mitose: a célula estica, borbulha, separa em duas e o valor aparece */
+      revelar: function (op) {
+        if (op && op.curto) { bolha(0, 320, 0.26); sino(0.12, 988, 0.22, 0.6); return; }
+        nota({ f: 95, f2: 175, d: 2.1, v: 0.2, a: 0.3, tipo: "sine" });
+        nota({ f: 190, f2: 340, d: 2.1, v: 0.05, a: 0.35, tipo: "triangle" });
+        [0.45, 0.7, 0.95, 1.2, 1.42, 1.62, 1.8].forEach(function (t, i) { bolha(t, 380 + i * 65 + Math.random() * 60, 0.1); });
+        sopro({ t: 1.4, d: 0.6, v: 0.06, f: 700, f2: 1900, q: 2 });
+        bolha(2.02, 260, 0.3, 0.14); bolha(2.18, 330, 0.3, 0.14);
+        sino(2.5, 784, 0.22, 0.7); sino(2.62, 1175, 0.2, 0.8);
+      },
+      acertar: function () {
+        [523, 659, 784, 1047, 1319].forEach(function (f, i) { bolha(i * 0.08, f * 0.5, 0.24, 0.13); });
+        sino(0.42, 1047, 0.2, 1); sino(0.42, 1319, 0.14, 1); sino(0.5, 1568, 0.12, 1);
+      },
+      errar: function () {
+        nota({ f: 240, f2: 62, d: 0.55, v: 0.3, tipo: "sawtooth", filtro: 900, filtro2: 160 });
+        sopro({ t: 0.02, d: 0.3, v: 0.12, f: 500, f2: 120, q: 1.5 });
+        bolha(0.5, 110, 0.18, 0.16);
+      },
+      /* últimos segundos: batimento do coração */
+      tique: function () {
+        nota({ f: 78, f2: 46, d: 0.16, v: 0.5 });
+        nota({ t: 0.2, f: 66, f2: 40, d: 0.2, v: 0.38 });
+      },
+      tempo: function () {
+        nota({ f: 440, d: 0.9, v: 0.16, tipo: "sine", a: 0.02 });
+        nota({ f: 220, f2: 80, d: 0.9, v: 0.2, tipo: "triangle", filtro: 800 });
+      },
+      /* a lâmina de vidro entra na platina */
+      passe: function () {
+        nota({ f: 2093, d: 0.25, v: 0.14 }); nota({ t: 0.05, f: 2794, d: 0.3, v: 0.1 });
+        sopro({ t: 0.02, d: 0.22, v: 0.08, f: 4200, q: 3 });
+      },
+      /* o foco pula de uma célula para outra */
+      foco: function () { sopro({ d: 0.035, v: 0.2, f: 2600, q: 2 }); bolha(0, 520 + Math.random() * 260, 0.12, 0.07); },
+      /* a objetiva trava na célula sorteada */
+      escolhida: function () {
+        sopro({ d: 0.05, v: 0.3, f: 1500, q: 1 }); nota({ f: 180, d: 0.08, v: 0.3 });
+        sino(0.12, 659, 0.22, 0.6); sino(0.26, 988, 0.24, 0.9);
+      }
+  });
+
   return {
     id: "biologia", nome: "Biologia",
+    /* duas opções de fonte para os títulos; os textos continuam em Atkinson */
+    fontes: [{ id: "a", nome: "Lilita One" }, { id: "b", nome: "Fredoka" }],
     revelacaoMs: REVELACAO_MS,
     fundo: fundo,
     revelar: revelar,
-    microscopio: microscopio,
+    passe: microscopio,
     sortear: sortear
   };
 })();

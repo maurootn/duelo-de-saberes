@@ -1,0 +1,422 @@
+[
+  {
+    "id": "teste-qui-1-01",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "tabela periódica",
+    "valor": 100,
+    "enunciado": "Na tabela periódica, como se chamam as colunas verticais?",
+    "alternativas": [
+      "Grupos ou famílias",
+      "Períodos",
+      "Séries",
+      "Camadas"
+    ],
+    "correta": 0,
+    "explicacao": "As 18 colunas verticais são os grupos (ou famílias); as linhas horizontais são os períodos.",
+    "justificativa_nivel": "Lembrar um termo da organização da tabela",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  },
+  {
+    "id": "teste-qui-1-02",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "tabela periódica",
+    "valor": 100,
+    "enunciado": "Qual é o símbolo químico do sódio?",
+    "alternativas": [
+      "Na",
+      "S",
+      "So",
+      "Sd"
+    ],
+    "correta": 0,
+    "explicacao": "O símbolo Na vem do latim natrium. S é o enxofre.",
+    "justificativa_nivel": "Lembrar um símbolo químico",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  },
+  {
+    "id": "teste-qui-1-03",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "tabela periódica",
+    "valor": 100,
+    "enunciado": "Os elementos do grupo 18, como hélio e neônio, são chamados de:",
+    "alternativas": [
+      "Gases nobres",
+      "Halogênios",
+      "Metais alcalinos",
+      "Calcogênios"
+    ],
+    "correta": 0,
+    "explicacao": "O grupo 18 reúne os gases nobres; halogênios são o 17, alcalinos o 1 e calcogênios o 16.",
+    "justificativa_nivel": "Lembrar o nome de uma família",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  },
+  {
+    "id": "teste-qui-1-04",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "ligações químicas",
+    "valor": 100,
+    "enunciado": "Que tipo de ligação une átomos que compartilham pares de elétrons?",
+    "alternativas": [
+      "Covalente",
+      "Iônica",
+      "Metálica",
+      "Ligação de hidrogênio"
+    ],
+    "correta": 0,
+    "explicacao": "Na ligação covalente os átomos compartilham pares de elétrons; na iônica há transferência.",
+    "justificativa_nivel": "Lembrar a definição de um tipo de ligação",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  },
+  {
+    "id": "teste-qui-1-05",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "tabela periódica",
+    "valor": 200,
+    "enunciado": "Por que os elementos de um mesmo grupo têm propriedades químicas parecidas?",
+    "alternativas": [
+      "Têm o mesmo número de elétrons na camada de valência",
+      "Têm a mesma massa atômica",
+      "Têm o mesmo número de nêutrons",
+      "Estão no mesmo período"
+    ],
+    "correta": 0,
+    "explicacao": "As propriedades químicas dependem dos elétrons de valência, que são iguais no mesmo grupo.",
+    "justificativa_nivel": "Explicar o conceito que organiza os grupos",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  },
+  {
+    "id": "teste-qui-1-06",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "ligações químicas",
+    "valor": 200,
+    "enunciado": "Por que o cloreto de sódio (NaCl) é formado por ligação iônica?",
+    "alternativas": [
+      "O sódio doa um elétron e o cloro recebe, formando íons",
+      "Os dois átomos compartilham elétrons igualmente",
+      "Os elétrons ficam livres entre os núcleos",
+      "O sódio e o cloro são ametais"
+    ],
+    "correta": 0,
+    "explicacao": "O Na (metal) perde 1 elétron e vira Na⁺; o Cl (ametal) ganha e vira Cl⁻. A atração entre íons é a ligação iônica.",
+    "justificativa_nivel": "Explicar a formação de uma ligação",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  },
+  {
+    "id": "teste-qui-1-07",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "tabela periódica",
+    "valor": 200,
+    "enunciado": "Por que os gases nobres quase não formam compostos?",
+    "alternativas": [
+      "Já têm a camada de valência completa e são estáveis",
+      "São muito pesados para reagir",
+      "Não têm elétrons",
+      "Só existem no estado líquido"
+    ],
+    "correta": 0,
+    "explicacao": "Com a camada de valência completa (8 elétrons, ou 2 no hélio), não precisam ganhar, perder nem compartilhar elétrons.",
+    "justificativa_nivel": "Explicar a estabilidade de uma família",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  },
+  {
+    "id": "teste-qui-1-08",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "ligações químicas",
+    "valor": 200,
+    "enunciado": "O que a regra do octeto diz sobre os átomos ao formar ligações?",
+    "alternativas": [
+      "Tendem a ficar com 8 elétrons na camada de valência",
+      "Sempre perdem 8 elétrons",
+      "Formam sempre 8 ligações",
+      "Ficam com 8 prótons no núcleo"
+    ],
+    "correta": 0,
+    "explicacao": "Pela regra do octeto, os átomos ganham, perdem ou compartilham elétrons até ficar com 8 na última camada.",
+    "justificativa_nivel": "Reconhecer o enunciado de um conceito",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  },
+  {
+    "id": "teste-qui-1-09",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "ligações químicas",
+    "valor": 300,
+    "enunciado": "Fios elétricos são feitos de cobre. Que característica da ligação metálica explica isso?",
+    "alternativas": [
+      "Elétrons livres que se movem pelo metal",
+      "Íons fixos que não se movem",
+      "Elétrons presos entre dois átomos",
+      "Falta de elétrons na camada de valência"
+    ],
+    "correta": 0,
+    "explicacao": "Na ligação metálica há um mar de elétrons livres; eles se deslocam e conduzem a corrente elétrica.",
+    "justificativa_nivel": "Aplicar o modelo da ligação metálica a um objeto do dia a dia",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  },
+  {
+    "id": "teste-qui-1-10",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "ligações químicas",
+    "valor": 300,
+    "enunciado": "Água com sal de cozinha acende uma lâmpada num circuito; água com açúcar, não. Por quê?",
+    "alternativas": [
+      "O sal libera íons na água; o açúcar não",
+      "O açúcar é mais pesado que o sal",
+      "O sal é um metal",
+      "A água com açúcar evapora mais rápido"
+    ],
+    "correta": 0,
+    "explicacao": "O NaCl é iônico e, na água, se separa em Na⁺ e Cl⁻, que conduzem corrente. O açúcar é molecular e não forma íons.",
+    "justificativa_nivel": "Aplicar ligação iônica e covalente a um experimento simples",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  },
+  {
+    "id": "teste-qui-1-11",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "ligações químicas",
+    "valor": 300,
+    "enunciado": "O magnésio (grupo 2) queima com o oxigênio (grupo 16) e forma um pó branco. Qual é a fórmula desse óxido?",
+    "alternativas": [
+      "MgO",
+      "MgO₂",
+      "Mg₂O",
+      "Mg₂O₃"
+    ],
+    "correta": 0,
+    "explicacao": "O Mg perde 2 elétrons (Mg²⁺) e o O ganha 2 (O²⁻). As cargas se anulam na proporção 1:1: MgO.",
+    "justificativa_nivel": "Aplicar a carga dos íons para montar uma fórmula",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  },
+  {
+    "id": "teste-qui-1-12",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "tabela periódica",
+    "valor": 300,
+    "enunciado": "Por que balões que flutuam em festas são cheios de hélio, e não de hidrogênio?",
+    "alternativas": [
+      "O hélio é um gás nobre e não pega fogo; o hidrogênio é inflamável",
+      "O hidrogênio é mais pesado que o ar",
+      "O hélio é um metal leve",
+      "O hidrogênio não existe como gás"
+    ],
+    "correta": 0,
+    "explicacao": "Os dois são mais leves que o ar, mas o hidrogênio reage com o oxigênio e explode; o hélio, gás nobre, é estável.",
+    "justificativa_nivel": "Aplicar a estabilidade dos gases nobres a uma situação do dia a dia",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  },
+  {
+    "id": "teste-qui-1-13",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "tabela periódica",
+    "valor": 400,
+    "enunciado": "Um elemento tem os elétrons distribuídos em camadas assim: 2, 8, 1. Em que grupo e período ele está?",
+    "alternativas": [
+      "Grupo 1, 3º período",
+      "Grupo 3, 1º período",
+      "Grupo 1, 2º período",
+      "Grupo 11, 3º período"
+    ],
+    "correta": 0,
+    "explicacao": "Três camadas indicam o 3º período; 1 elétron na última camada indica o grupo 1. É o sódio.",
+    "justificativa_nivel": "Relacionar distribuição eletrônica e posição na tabela",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  },
+  {
+    "id": "teste-qui-1-14",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "tabela periódica",
+    "valor": 400,
+    "enunciado": "No grupo 1 (Li, Na, K), a reação com a água fica mais violenta de cima para baixo. O que explica isso?",
+    "alternativas": [
+      "O raio cresce e o elétron de valência sai com mais facilidade",
+      "O raio diminui e o núcleo atrai mais os elétrons",
+      "A massa maior deixa o átomo mais estável",
+      "Os átomos passam a ganhar elétrons com facilidade"
+    ],
+    "correta": 0,
+    "explicacao": "Descendo no grupo, aumenta o número de camadas: o elétron de valência fica mais longe do núcleo e é perdido mais fácil.",
+    "justificativa_nivel": "Relacionar raio atômico e reatividade a partir de uma observação",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  },
+  {
+    "id": "teste-qui-1-15",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "geometria molecular, polaridade e forças intermoleculares",
+    "valor": 400,
+    "enunciado": "A água (H₂O) é polar e o gás carbônico (CO₂) é apolar, embora os dois tenham ligações polares. O que explica isso?",
+    "alternativas": [
+      "A geometria: a água é angular e o CO₂ é linear",
+      "O CO₂ não tem ligações covalentes",
+      "A água tem ligação iônica",
+      "O oxigênio do CO₂ não é eletronegativo"
+    ],
+    "correta": 0,
+    "explicacao": "No CO₂ linear as duas polaridades se anulam; na água angular elas se somam e a molécula fica polar.",
+    "justificativa_nivel": "Relacionar polaridade das ligações e geometria molecular",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  },
+  {
+    "id": "teste-qui-1-16",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "ligações químicas",
+    "valor": 400,
+    "enunciado": "Um sólido funde a 801 °C, não conduz eletricidade sólido, mas conduz quando fundido. Que tipo de substância ele é?",
+    "alternativas": [
+      "Iônica",
+      "Molecular",
+      "Metálica",
+      "Gás nobre"
+    ],
+    "correta": 0,
+    "explicacao": "Fusão alta e condução só fundido (íons livres para se mover) são marcas de substância iônica, como o NaCl.",
+    "justificativa_nivel": "Interpretar dados experimentais para classificar uma substância",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  },
+  {
+    "id": "teste-qui-1-17",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "ligações químicas",
+    "valor": 500,
+    "enunciado": "O elemento X está no grupo 2 e o Y, no grupo 17. Qual é a fórmula e o tipo de ligação do composto formado entre eles?",
+    "alternativas": [
+      "XY₂, ligação iônica",
+      "X₂Y, ligação iônica",
+      "XY₂, ligação covalente",
+      "XY, ligação metálica"
+    ],
+    "correta": 0,
+    "explicacao": "X (metal) perde 2 elétrons: X²⁺. Y (halogênio) ganha 1: Y⁻. São precisos dois Y para cada X: XY₂, iônico.",
+    "justificativa_nivel": "Várias etapas: grupo → carga do íon → proporção → tipo de ligação",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  },
+  {
+    "id": "teste-qui-1-18",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "geometria molecular, polaridade e forças intermoleculares",
+    "valor": 500,
+    "enunciado": "Entre F, O, N e C, qual forma com o hidrogênio a ligação mais polar, e por quê?",
+    "alternativas": [
+      "F, por ser o mais eletronegativo dos quatro",
+      "C, por ter mais elétrons",
+      "N, por estar no meio do período",
+      "O, por ser o maior desses átomos"
+    ],
+    "correta": 0,
+    "explicacao": "No 2º período a eletronegatividade cresce da esquerda para a direita; o flúor é o mais eletronegativo e polariza mais a ligação.",
+    "justificativa_nivel": "Várias etapas: posição na tabela → tendência periódica → polaridade, com distratores próximos",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  },
+  {
+    "id": "teste-qui-1-19",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "ligações químicas",
+    "valor": 500,
+    "enunciado": "Um átomo neutro tem 17 prótons. Que íon ele forma e com qual elemento do 3º período faria um composto na proporção 1:1?",
+    "alternativas": [
+      "Cl⁻, com o sódio",
+      "Cl⁺, com o sódio",
+      "Cl⁻, com o magnésio",
+      "Cl²⁻, com o alumínio"
+    ],
+    "correta": 0,
+    "explicacao": "Z = 17 é o cloro (7 elétrons de valência): ganha 1 e vira Cl⁻. Para 1:1, o parceiro deve formar íon +1: o sódio (NaCl).",
+    "justificativa_nivel": "Várias etapas: número atômico → elemento → íon → proporção → parceiro",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  },
+  {
+    "id": "teste-qui-1-20",
+    "modo": "sala",
+    "disciplina": "quimica",
+    "serie": 1,
+    "assunto": "geometria molecular, polaridade e forças intermoleculares",
+    "valor": 500,
+    "enunciado": "O gelo boia na água líquida. Pensando nas ligações de hidrogênio, o que explica o gelo ser menos denso?",
+    "alternativas": [
+      "No gelo, as ligações de hidrogênio formam uma rede com espaços vazios",
+      "O gelo tem mais moléculas no mesmo volume",
+      "No gelo, as ligações covalentes da água se rompem",
+      "O gelo prende ar dissolvido entre as moléculas"
+    ],
+    "correta": 0,
+    "explicacao": "Ao congelar, as ligações de hidrogênio organizam as moléculas numa rede aberta, que ocupa mais volume: menos densidade.",
+    "justificativa_nivel": "Raciocínio em várias etapas ligando forças intermoleculares, estrutura e densidade",
+    "tempo": 20,
+    "idioma_voz": "pt-BR",
+    "revisado": false
+  }
+]

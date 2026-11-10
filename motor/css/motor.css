@@ -422,3 +422,7 @@ body[data-modo="claro"] .campea { text-shadow: none; }
 }
 .chips + .chips { margin-top: .4rem; }
 [data-acao="testar-voz"] { margin-top: .2rem; }
+
+/* ---------- disciplinas ainda sem banco: "em breve" ---------- */
+.chip-breve { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.05; opacity: .5; cursor: not-allowed; border-style: dashed; }
+.chip-breve small { font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--acento); }

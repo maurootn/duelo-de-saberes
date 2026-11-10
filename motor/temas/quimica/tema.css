@@ -1,0 +1,285 @@
+/* Duelo de Saberes 2.0 · Tema de Química (Fase 5)
+   Universo: bancada de laboratório e vidrarias. Cores: azul-cobalto e laranja de chama.
+   Duas versões: escuro (laboratório à noite) e sala clara (azulejos brancos).
+   Só muda o que o plano manda mudar por tema: fundo, verso das cartas, revelação do valor, tela do passe e fonte dos títulos.
+   Tabuleiro, placar, cronômetro e especiais ficam no mesmo lugar. */
+
+/* ---------- fontes dos títulos (Google Fonts, licença OFL, embutidas) ---------- */
+@font-face { font-family: "Russo One"; src: url("../../fontes/russo-one-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Chakra Petch Titulo"; src: url("../../fontes/chakra-petch-latin-700-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+
+/* ---------- variáveis: laboratório escuro ---------- */
+body[data-tema="quimica"] {
+  --fonte-titulo: "Russo One", "Bungee", "Arial Black", sans-serif;
+  --fundo: #040A1C; --fundo-2: #0B1A44;
+  --painel-solido: #0A1838;
+  --tinta: #EEF4FF; --tinta-suave: #A9BCE6;
+  --borda: rgba(255, 150, 60, .42); --borda-forte: #FF8A1F;
+  --acento-claro: #FFD7A6; --acento: #FF8A1F; --acento-escuro: #B4500A; --sobre-acento: #2A1200;
+  --quente: #FF8A1F;
+  --verso-1: #3B74FF; --verso-2: #0E2C8C;
+  --luz: 150, 190, 255; --forca-luz: .2;
+  --logo-a1: #D6E4FF; --logo-a2: #6C9BFF; --logo-a3: #1C46B8; --logo-b1: #FFC07A; --logo-b2: #E0640E; --logo-traco: #040A1C;
+  --brilho: 0 0 1.2rem rgba(255, 138, 31, .35);
+  --titulo: linear-gradient(180deg, #FFF1DA 8%, #FFB45C 52%, #E0640E 100%);
+  /* próprias do tema */
+  --qm-vidro: #CFE0FF; --qm-vidro-forca: .2; --qm-azulejo: rgba(140, 175, 255, .07); --qm-bancada-1: #1A2340; --qm-bancada-2: #070C1E;
+  --qm-liq-a: #3B74FF; --qm-liq-b: #FF8A1F; --qm-liq-c: #33D6B0;
+  --qm-borda: rgba(0, 0, 0, .7); --qm-tile: #0E2160; --qm-tile-borda: rgba(120, 165, 255, .35); --qm-tile-aceso: #FFB45C;
+}
+body[data-tema="quimica"][data-fonte="b"] { --fonte-titulo: "Chakra Petch Titulo", "Bungee", "Arial Black", sans-serif; }
+
+/* ---------- variáveis: sala clara ---------- */
+body[data-tema="quimica"][data-modo="claro"] {
+  --fundo: #EEF3FC; --fundo-2: #D5E1F7;
+  --painel: #FFFFFF; --painel-2: #F4F7FD; --painel-solido: #FFFFFF;
+  --tinta: #0E1C3A; --tinta-suave: #44557A;
+  --borda: rgba(30, 75, 200, .4); --borda-forte: #1E4BC8;
+  --acento: #F07A12; --acento-escuro: #A84B04; --sobre-acento: #FFFFFF; --acento-claro: #FFC58A;
+  --quente: #D4600A;
+  --prata: #0E1C3A; --prata-escura: #44557A;
+  --ficha-traco: #0E1C3A;
+  --luz: 255, 255, 255; --forca-luz: .9;
+  --brilho: 0 0 0 rgba(0, 0, 0, 0);
+  --sombra: 0 .4rem 1rem rgba(14, 28, 58, .18);
+  --titulo: linear-gradient(180deg, #F07A12, #A84B04);
+  --logo-traco: #FFFFFF;
+  --qm-vidro: #1E4BC8; --qm-vidro-forca: .22; --qm-azulejo: rgba(30, 75, 200, .1); --qm-bancada-1: #C9D5EC; --qm-bancada-2: #9FB0D2;
+  --qm-borda: rgba(80, 100, 150, .35); --qm-tile: #DCE6FA; --qm-tile-borda: rgba(30, 75, 200, .3); --qm-tile-aceso: #F07A12;
+}
+
+/* ---------- fundo: bancada de laboratório ---------- */
+body[data-tema="quimica"] .tabuleiro, body[data-tema="quimica"] .pergunta { background: var(--fundo); }
+.qm-lab { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--fundo); color: var(--qm-vidro); }
+.qm-azulejo {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(var(--qm-azulejo) .1rem, transparent .1rem) 0 0 / 3.2rem 3.2rem,
+    linear-gradient(90deg, var(--qm-azulejo) .1rem, transparent .1rem) 0 0 / 3.2rem 3.2rem;
+}
+.qm-luz {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 40%, rgba(var(--luz), var(--forca-luz)), transparent 70%),
+    radial-gradient(ellipse at 50% 50%, transparent 55%, var(--qm-borda));
+}
+.qm-mol { position: absolute; opacity: calc(var(--qm-vidro-forca) * .8); animation: qm-deriva var(--t) ease-in-out infinite alternate; }
+.qm-mol[style*="--k:1"] { filter: blur(.08rem); opacity: calc(var(--qm-vidro-forca) * .6); }
+.qm-mol[style*="--k:2"] { filter: blur(.2rem); opacity: calc(var(--qm-vidro-forca) * .45); }
+.qm-mol svg, .qm-vidraria svg { display: block; width: 100%; height: auto; overflow: visible; }
+.qm-atomo-o { fill: var(--qm-liq-b); fill-opacity: .9; }
+@keyframes qm-deriva {
+  0% { transform: translate(0, 0) rotate(-8deg); }
+  50% { transform: translate(1.6rem, -1.4rem) rotate(10deg); }
+  100% { transform: translate(-1.2rem, .8rem) rotate(-4deg); }
+}
+.qm-bancada {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 9%;
+  background: linear-gradient(180deg, var(--qm-bancada-1), var(--qm-bancada-2));
+  border-top: .2rem solid color-mix(in srgb, var(--qm-vidro) 35%, transparent);
+  opacity: .9;
+}
+.qm-vidraria { position: absolute; bottom: 8.4%; opacity: calc(var(--qm-vidro-forca) * 2.2); }
+.qm-liq-a { fill: var(--qm-liq-a); fill-opacity: .7; }
+.qm-liq-b { fill: var(--qm-liq-b); fill-opacity: .7; }
+.qm-liq-c { fill: var(--qm-liq-c); fill-opacity: .6; }
+.qm-bolhas circle { fill: #FFFFFF; fill-opacity: .7; animation: qm-sobe 2.6s ease-in infinite; }
+.qm-bolhas circle:nth-child(2) { animation-delay: -.9s; }
+.qm-bolhas circle:nth-child(3) { animation-delay: -1.7s; }
+@keyframes qm-sobe { from { transform: translateY(0); opacity: 0; } 20% { opacity: 1; } to { transform: translateY(-1.4rem); opacity: 0; } }
+.qm-chama { transform-box: fill-box; transform-origin: 50% 100%; animation: qm-tremula .18s ease-in-out infinite alternate; }
+.qm-fogo-1 { fill: #3B74FF; fill-opacity: .75; }
+.qm-fogo-2 { fill: #BFE0FF; }
+@keyframes qm-tremula { from { transform: scale(1, .94) skewX(-2deg); } to { transform: scale(.96, 1.06) skewX(2deg); } }
+
+body[data-tema="quimica"] .barra { background: linear-gradient(180deg, #1B3B9E, #0A1A55); border-bottom-color: #FF8A1F; }
+body[data-tema="quimica"] .telao::before, body[data-tema="quimica"] .telao::after { display: none; }
+body[data-tema="quimica"] .telao { border-radius: .6rem; }
+body[data-tema="quimica"] .sobre { background: radial-gradient(ellipse at 50% 40%, rgba(10, 26, 80, .88), rgba(2, 5, 16, .96)); }
+
+/* ---------- verso das cartas: cada carta é um elemento da tabela periódica ---------- */
+body[data-tema="quimica"] .carta { border-radius: .55rem; }
+body[data-tema="quimica"] .carta-verso, body[data-tema="quimica"] .carta-frente {
+  border-radius: .55rem; border: .14rem solid rgba(200, 220, 255, .55);
+  box-shadow: 0 .3rem 0 #061440, 0 .7rem 1.1rem rgba(0, 0, 0, .45), inset 0 0 0 .14rem rgba(255, 255, 255, .1);
+}
+body[data-tema="quimica"] .carta-verso {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .14), transparent 40%),
+    linear-gradient(160deg, var(--verso-1), var(--verso-2));
+}
+/* faixa laranja embaixo e o símbolo do elemento no canto */
+body[data-tema="quimica"] .carta-verso::before {
+  content: ""; position: absolute; left: 10%; right: 10%; bottom: 11%; height: .2rem; border-radius: .2rem;
+  background: linear-gradient(90deg, transparent, #FF8A1F, transparent);
+}
+body[data-tema="quimica"] .carta-verso::after {
+  position: absolute; top: 7%; right: 8%;
+  font-family: var(--fonte-titulo); font-size: clamp(.65rem, 2.1vmin, 1.25rem); line-height: 1;
+  color: #FFC07A; text-shadow: 0 .06em 0 rgba(0, 0, 0, .5);
+}
+body[data-tema="quimica"] .carta[data-indice="0"] .carta-verso::after { content: "H"; }
+body[data-tema="quimica"] .carta[data-indice="1"] .carta-verso::after { content: "He"; }
+body[data-tema="quimica"] .carta[data-indice="2"] .carta-verso::after { content: "Li"; }
+body[data-tema="quimica"] .carta[data-indice="3"] .carta-verso::after { content: "Be"; }
+body[data-tema="quimica"] .carta[data-indice="4"] .carta-verso::after { content: "B"; }
+body[data-tema="quimica"] .carta[data-indice="5"] .carta-verso::after { content: "C"; }
+body[data-tema="quimica"] .carta[data-indice="6"] .carta-verso::after { content: "N"; }
+body[data-tema="quimica"] .carta[data-indice="7"] .carta-verso::after { content: "O"; }
+body[data-tema="quimica"] .carta[data-indice="8"] .carta-verso::after { content: "F"; }
+body[data-tema="quimica"] .carta[data-indice="9"] .carta-verso::after { content: "Ne"; }
+body[data-tema="quimica"] .carta[data-indice="10"] .carta-verso::after { content: "Na"; }
+body[data-tema="quimica"] .carta[data-indice="11"] .carta-verso::after { content: "Mg"; }
+body[data-tema="quimica"] .carta[data-indice="12"] .carta-verso::after { content: "Al"; }
+body[data-tema="quimica"] .carta[data-indice="13"] .carta-verso::after { content: "Si"; }
+body[data-tema="quimica"] .carta[data-indice="14"] .carta-verso::after { content: "P"; }
+body[data-tema="quimica"] .carta[data-indice="15"] .carta-verso::after { content: "S"; }
+body[data-tema="quimica"] .carta[data-indice="16"] .carta-verso::after { content: "Cl"; }
+body[data-tema="quimica"] .carta[data-indice="17"] .carta-verso::after { content: "Ar"; }
+body[data-tema="quimica"] .carta[data-indice="18"] .carta-verso::after { content: "K"; }
+body[data-tema="quimica"] .carta[data-indice="19"] .carta-verso::after { content: "Ca"; }
+body[data-tema="quimica"] .carta-numero {
+  background: none; border: 0; box-shadow: none; width: auto; height: auto;
+  color: #FFFFFF; font-size: clamp(1.4rem, 5.4vmin, 3.4rem);
+  text-shadow: 0 .06em 0 rgba(0, 10, 50, .7), 0 0 .6em rgba(120, 170, 255, .6);
+}
+body[data-tema="quimica"] .carta-frente {
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 30%, rgba(255, 255, 255, .55), transparent 70%),
+    linear-gradient(180deg, #FFD08A, #FF8A1F 60%, #D4560A);
+  color: #2A1200; border-color: #FFFFFF;
+}
+body[data-tema="quimica"] button.carta:not(.virando):hover .carta-verso,
+body[data-tema="quimica"] .carta.marcada .carta-verso { box-shadow: 0 .3rem 0 #061440, 0 0 0 .2rem #FFFFFF, 0 0 1.6rem rgba(255, 138, 31, .95); }
+body[data-tema="quimica"] .carta-usada { border-radius: .55rem; }
+
+/* ---------- revelação da carta: béquer no fogo ----------
+   A carta vai ao centro e cresce; o fogo acende, o líquido azul ferve, muda para laranja,
+   o vapor sobe levando o valor e a carta mostra o número. Dura 2,6 s, depois de 0,35 s de viagem. */
+body[data-tema="quimica"] .carta.virando {
+  z-index: 5; transform: translate(var(--qm-x, 0), var(--qm-y, 0)) scale(var(--qm-e, 1.08));
+  transition: transform .5s cubic-bezier(.3, 1.2, .5, 1);
+}
+body[data-tema="quimica"] .carta.virando .carta-giro { transform: none; z-index: 2; }
+body[data-tema="quimica"] .carta.virando .carta-verso { animation: qm-some .3s .1s both; }
+body[data-tema="quimica"] .carta.virando .carta-frente { transform: none; animation: qm-valor 2.6s .35s both; box-shadow: 0 .3rem 0 var(--acento-escuro), 0 0 2rem rgba(255, 200, 120, .9); }
+body[data-tema="quimica"] .carta.virando.revelada .carta-verso { visibility: hidden; animation: none; }
+body[data-tema="quimica"] .carta.virando.revelada .carta-frente { animation: none; }
+@keyframes qm-some { to { opacity: 0; } }
+@keyframes qm-valor {
+  0%, 80% { opacity: 0; transform: translateY(18%) scale(.6); filter: blur(.4rem); }
+  92% { opacity: 1; transform: translateY(-3%) scale(1.08); filter: blur(0); }
+  100% { opacity: 1; transform: none; filter: blur(0); }
+}
+
+.bequer { position: absolute; inset: -6% -3%; z-index: 1; pointer-events: none; animation: bq-camada 2.6s .35s both; }
+.bequer svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 .5rem .8rem rgba(0, 0, 0, .5)); }
+.bequer * { transform-box: fill-box; transform-origin: center; }
+@keyframes bq-camada { 0% { opacity: 0; transform: scale(.7); } 8% { opacity: 1; transform: none; } 82% { opacity: 1; } 96%, 100% { opacity: 0; transform: scale(1.05); } }
+.bq-vidro { fill: rgba(220, 235, 255, .14); stroke: #E6F0FF; stroke-width: 2.6; stroke-linejoin: round; }
+.bq-escala { fill: none; stroke: #E6F0FF; stroke-width: 1.4; opacity: .8; }
+.bq-reflexo { fill: none; stroke: #FFFFFF; stroke-width: 3; stroke-linecap: round; opacity: .35; }
+.bq-liquido, .bq-onda { animation: bq-cor 2.6s .35s both; }
+.bq-onda { animation: bq-cor 2.6s .35s both, bq-ondula .5s linear infinite; transform-origin: 0 0; }
+@keyframes bq-cor {
+  0%, 30% { fill: #2E62F5; }
+  44% { fill: #7A4DE0; }
+  56% { fill: #E04FA8; }
+  66%, 100% { fill: #FF8A1F; }
+}
+@keyframes bq-ondula { from { transform: translateX(0); } to { transform: translateX(-20px); } }
+.bq-bolhas circle { fill: #FFFFFF; fill-opacity: .75; opacity: 0; animation: bq-bolha var(--v) var(--a) ease-in infinite; }
+@keyframes bq-bolha { 0% { opacity: 0; transform: translateY(0) scale(.6); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(-42px) scale(1.15); } }
+.bq-fogo { animation: bq-fogo 2.6s .35s both; transform-origin: 50% 100%; }
+.bq-fogo path { fill: #3B74FF; animation: qm-tremula .14s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+.bq-fogo .bq-fogo-2 { fill: #FFC07A; }
+@keyframes bq-fogo { 0%, 4% { opacity: 0; transform: scale(.2); } 18% { opacity: 1; transform: scale(1); } 80% { opacity: 1; } 92%, 100% { opacity: 0; } }
+.bq-aura { opacity: 0; animation: bq-aura 2.6s .35s both; }
+@keyframes bq-aura { 0%, 48% { opacity: 0; } 66% { opacity: .9; } 84% { opacity: .6; } 100% { opacity: 0; } }
+.bq-vapor circle { fill: rgba(240, 246, 255, .55); filter: blur(3px); opacity: 0; animation: bq-vapor 1.2s var(--a) ease-out both; }
+@keyframes bq-vapor { 0% { opacity: 0; transform: translateY(0) scale(.4); } 30% { opacity: .9; } 100% { opacity: 0; transform: translateY(-58px) scale(1.8); } }
+.bq-valor {
+  font-family: var(--fonte-titulo); font-size: 34px; fill: #FFFFFF; stroke: #B4500A; stroke-width: 1.2; paint-order: stroke;
+  opacity: 0; animation: bq-valor 2.6s .35s both; transform-origin: 50% 50%;
+}
+@keyframes bq-valor { 0%, 52% { opacity: 0; transform: translateY(26px) scale(.5); } 70% { opacity: 1; transform: translateY(0) scale(1.05); } 84% { opacity: 1; transform: translateY(-6px) scale(1.15); } 96%, 100% { opacity: 0; transform: translateY(-10px) scale(1.3); } }
+
+/* ---------- tela do passe: tabela periódica ---------- */
+.tp { --d: clamp(19rem, min(78vw, 112vh), 46rem); width: var(--d); flex: none; transition: width .4s; }
+.tp.pequeno { --d: clamp(14rem, min(52vw, 70vh), 26rem); }
+.tp-grade {
+  position: relative; display: grid; grid-template-columns: repeat(18, 1fr); grid-template-rows: repeat(7, calc(var(--d) / 18 - .1rem)) calc(var(--d) * .03) calc(var(--d) / 18);
+  gap: .1rem; padding: calc(var(--d) * .018); border-radius: .8rem;
+  background: color-mix(in srgb, var(--painel-solido) 82%, transparent); border: .1rem solid var(--qm-tile-borda);
+  box-shadow: 0 1rem 2.4rem rgba(0, 0, 0, .45);
+  animation: tp-entra .45s cubic-bezier(.2, 1.2, .4, 1) both;
+}
+@keyframes tp-entra { from { transform: scale(.85); opacity: 0; } }
+.tp-el {
+  display: block; border-radius: .14rem; background: var(--qm-tile); border: .06rem solid var(--qm-tile-borda);
+  animation: tp-acende .5s calc(.25s + var(--n) * 14ms) both;
+}
+/* elemento por elemento: cada quadrinho acende em laranja e assenta no azul */
+@keyframes tp-acende {
+  0% { background: var(--qm-tile); opacity: .3; }
+  35% { background: var(--qm-tile-aceso); opacity: 1; box-shadow: 0 0 .5rem var(--qm-tile-aceso); }
+  100% { background: var(--qm-tile); opacity: 1; }
+}
+.tp.sorteando .tp-el { animation: tp-varre 1.1s calc(var(--n) * 12ms) ease-in-out infinite; }
+@keyframes tp-varre { 0%, 70%, 100% { background: var(--qm-tile); } 30% { background: color-mix(in srgb, var(--qm-tile-aceso) 55%, var(--qm-tile)); } }
+/* as equipes ocupam o vão que a tabela tem em cima dos metais de transição */
+.tp-equipes {
+  grid-column: 3 / 13; grid-row: 1 / 4; display: flex; gap: calc(var(--d) * .012); align-items: stretch; justify-content: center; padding: 0 calc(var(--d) * .01);
+}
+.tp-equipe {
+  position: relative; flex: 1 1 0; max-width: calc(var(--d) * .14); min-width: 0; display: grid; place-items: center; align-content: center;
+  border-radius: .35rem; padding: calc(var(--d) * .006);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cor-equipe) 30%, var(--painel-solido)), var(--painel-solido));
+  border: .14rem solid color-mix(in srgb, var(--cor-equipe) 70%, transparent);
+  transition: transform .15s, box-shadow .15s, opacity .15s, filter .15s;
+  animation: tp-equipe-entra .4s calc(.6s + var(--k) * 80ms) cubic-bezier(.2, 1.3, .4, 1) both;
+}
+@keyframes tp-equipe-entra { from { transform: translateY(-.8rem) scale(.7); opacity: 0; } }
+.tp-num { position: absolute; top: .12rem; left: .25rem; font-size: calc(var(--d) * .018); font-weight: 700; color: var(--tinta-suave); }
+.tp-ficha { position: absolute; top: .18rem; right: .2rem; width: calc(var(--d) * .026); height: calc(var(--d) * .026); }
+.tp-ficha .ficha { width: 100%; height: 100%; }
+.tp-sim { font-family: var(--fonte-titulo); font-size: calc(var(--d) * .05); line-height: 1; color: var(--cor-equipe); text-shadow: 0 .05em 0 rgba(0, 0, 0, .4); margin-top: calc(var(--d) * .01); }
+.tp-nome { font-size: calc(var(--d) * .017); font-weight: 700; line-height: 1.1; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--tinta); }
+.tp.sorteando .tp-equipe:not(.acesa), .tp.parado .tp-equipe:not(.acesa) { opacity: .45; filter: saturate(.5); }
+.tp-equipe.acesa {
+  transform: scale(1.1); z-index: 1;
+  background: linear-gradient(180deg, #FFE0B0, #FF8A1F 70%, #D4560A); border-color: #FFFFFF;
+  box-shadow: 0 0 0 .14rem var(--cor-equipe), 0 0 1.4rem rgba(255, 138, 31, .95);
+}
+.tp-equipe.acesa .tp-sim, .tp-equipe.acesa .tp-nome, .tp-equipe.acesa .tp-num { color: #2A1200; text-shadow: none; }
+.tp.travou .tp-equipe.acesa { animation: tp-chama .5s ease-out 2; }
+@keyframes tp-chama { 0% { transform: scale(1.1); } 40% { transform: scale(1.28); box-shadow: 0 0 0 .2rem #FFFFFF, 0 0 2.6rem #FF8A1F; } 100% { transform: scale(1.1); } }
+.tp-legenda {
+  grid-column: 3 / 18; grid-row: 9; display: grid; place-items: center; border-radius: .2rem;
+  background: color-mix(in srgb, var(--acento) 22%, transparent); border: .06rem dashed var(--acento);
+  font-family: var(--fonte-titulo); font-size: calc(var(--d) * .024); letter-spacing: .08em; text-transform: uppercase; color: var(--tinta);
+}
+.tp.pequeno .tp-equipe:not(.acesa) { display: none; }
+.tp.pequeno .tp-equipe.acesa { max-width: calc(var(--d) * .22); }
+.tp.pequeno .tp-legenda { display: none; }
+.tp.pequeno .tp-grade { grid-template-rows: repeat(7, calc(var(--d) / 18 - .1rem)); }
+
+/* ---------- celular: as equipes saem do vão e ficam embaixo da tabela ---------- */
+@media (max-width: 639px) {
+  .tp { --d: min(92vw, 26rem); }
+  .tp.pequeno { --d: min(70vw, 18rem); }
+  .tp-grade { grid-template-rows: repeat(7, calc(var(--d) / 18 - .1rem)) calc(var(--d) * .03) calc(var(--d) / 18) auto; }
+  .tp-equipes { grid-column: 1 / -1; grid-row: 10; flex-wrap: wrap; padding-top: .5rem; }
+  .tp-equipe { flex: 1 1 28%; max-width: 32%; min-height: 4.6rem; }
+  .tp-sim { font-size: 1.6rem; } .tp-nome { font-size: .72rem; } .tp-num { font-size: .62rem; }
+  .tp-ficha { width: .9rem; height: .9rem; }
+  .tp.pequeno .tp-equipe.acesa { max-width: 60%; }
+  .tp.pequeno .tp-grade { grid-template-rows: repeat(7, calc(var(--d) / 18 - .1rem)) auto; }
+  .qm-vidraria { display: none; }
+}
+
+/* ---------- "reduzir animações": nada de deriva, fervura ou varredura; a carta só mostra o valor ---------- */
+@media (prefers-reduced-motion: reduce) {
+  body[data-tema="quimica"] .carta.virando { transform: none; }
+  .tp-el, .tp-equipe, .tp-grade { animation: none !important; }
+}
