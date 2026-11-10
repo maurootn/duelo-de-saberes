@@ -188,15 +188,10 @@
     var ch = chaveLeitura();
     if (!VOZ.leuEsta(ch)) lerPergunta(ch);
   }
-  /* lê o enunciado e, quando estão à vista, as alternativas com as letras da tela.
-     No passe e no Às cegas a voz lê só o enunciado. */
+  /* a voz lê só o enunciado, nunca as alternativas (pedido do professor em 10/11/2026) */
   function lerPergunta(ch) {
-    var j = E().jogada, q = motor.questao(j.q), letras = ["A", "B", "C", "D"];
-    var partes = [/[.?!:]$/.test(q.enunciado.trim()) ? q.enunciado : q.enunciado + "."];
-    if (!j.aberta && !j.cegas && j.etapa !== "passe") j.ordem.forEach(function (orig, pos) {
-      if (j.eliminadas.indexOf(orig) < 0) partes.push("Letra " + letras[pos] + ": " + q.alternativas[orig] + ".");
-    });
-    VOZ.ler(partes, ch);
+    var q = motor.questao(E().jogada.q);
+    VOZ.ler([/[.?!:]$/.test(q.enunciado.trim()) ? q.enunciado : q.enunciado + "."], ch);
   }
   /* Em Dobro com voz: as alternativas somem aos 10 s ou, se a leitura ainda não acabou, quando ela terminar.
      Sem voz (ou no Às cegas) vale o tempo calculado pelo motor. */
@@ -327,7 +322,7 @@
             '<div class="chips" role="radiogroup" aria-label="Velocidade da voz">' + chipVisual("vozVel", "0.85", "Lenta") + chipVisual("vozVel", "1", "Normal") + chipVisual("vozVel", "1.2", "Rápida") + '</div>' +
             seletorVoz() +
             '<button class="botao botao-contorno botao-pequeno" data-acao="testar-voz">Testar a voz</button>' +
-            '<p class="nota">Lê o enunciado e as alternativas assim que a pergunta abre. No passe e no Às cegas, só o enunciado. No jogo, L lê de novo.</p></div>' +
+            '<p class="nota">Lê só o enunciado, assim que a pergunta abre; as alternativas nunca são lidas. No jogo, L lê de novo.</p></div>' +
           '<div><h3 class="mini-titulo">Títulos de Biologia</h3>' +
             '<div class="chips" role="radiogroup" aria-label="Fonte dos títulos no tema de Biologia">' + chipVisual("fonte", "a", "A · Lilita One") + chipVisual("fonte", "b", "B · Fredoka") + '</div>' +
             '<p class="nota">Vale só no tema de Biologia. Os textos continuam em Atkinson.</p></div>' +
@@ -1450,7 +1445,7 @@
       case "ler": if (telaAtual() === "pergunta") { VOZ.configurar({ ligada: true }); lerPergunta(chaveLeitura()); VOZ.configurar({ ligada: visual.voz === "sim" }); } break;
       case "testar-voz":
         VOZ.configurar({ ligada: true });
-        VOZ.ler(["Olá, turma! Esta é a voz que vai ler as perguntas do Duelo de Saberes.", "Letra A: fotossíntese. Letra B: respiração celular."], "teste");
+        VOZ.ler(["Olá, turma! Esta é a voz que vai ler as perguntas do Duelo de Saberes."], "teste");
         VOZ.configurar({ ligada: visual.voz === "sim" });
         break;
       case "ouvir": SONS.ligar(true); som(v); SONS.ligar(visual.som === "sim"); break;
